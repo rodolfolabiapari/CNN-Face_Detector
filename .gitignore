@@ -1,0 +1,11 @@
+
+*.jpg
+
+*.gz
+
+
+cnn-cifar_10-model.prm
+
+cnn-cifar_100-model.prm
+
+data_sets/
