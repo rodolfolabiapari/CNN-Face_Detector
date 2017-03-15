@@ -70,3 +70,37 @@ def build_model(network_depth, num_features):
     model = Model(layers)
 
     return model
+
+
+
+"""
+
+# an image of a frog from wikipedia
+#img_source = "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Atelopus_zeteki1.jpg/440px-Atelopus_zeteki1.jpg"
+img_source = "http://www.blog2.it/wp-content/uploads/2010/12/labrador-retriever.jpeg"
+
+urllib.urlretrieve(img_source, filename="image.jpg")
+
+img_source = "image.jpg"
+#img_source = "human1.jpg"
+
+img = Image.open(img_source)
+crop = img.crop((0, 0, min(img.size), min(img.size)))
+crop.thumbnail((32, 32))
+crop = np.asarray(crop, dtype=np.float32)
+
+x_new = np.zeros((128, 3072), dtype=np.float32)
+x_new[0] = crop.reshape(1, 3072) / 255
+
+inference_set = ArrayIterator(x_new, None, nclass=number_class, lshape=(3, 32, 32))
+
+#classes = ["airplane", "automobile", "bird", "cat", "deer", "dog", "frog", "horse", "ship", "truck"]
+#print classes
+#classes = ["No", "Yes"]
+
+out = model.get_outputs(inference_set)
+
+print out[0]
+#print classes[out[0].argmax()]
+
+"""
