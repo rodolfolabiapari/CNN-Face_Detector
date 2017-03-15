@@ -30,7 +30,8 @@ from neon.initializers import Gaussian
 
 import time
 
-import functions
+import basic_functs
+import train_functs
 
 print "[INFO]: Library read."
 
@@ -45,7 +46,7 @@ print "[INFO]: Information about backend:"
 print "\t", be
 
 # TODO arrumar o args
-train_again = functions.verify_args()
+train_again = basic_functs.verify_args()
 train_again = "y"
 
 print "[DOWN]: Downloading the dataset of training."
@@ -135,45 +136,20 @@ elif data_set == "cifar_100":
 
 """
 
-train_set = functions.loading_set_for_training("./data_sets/FDDB-folds/FDDB-fold-01-ellipseList-1.txt")
+train_set = basic_functs.loading_set_for_training("./data_sets/FDDB-folds/FDDB-fold-01-ellipseList-1.txt")
 
 
 if train_again == "y":
-    print "[INFO]: The Neural Network was not created."
+    print "[INFO]: The Neural Network was not created yet."
     print "[INFO]: Starting procedure of creating and training."
 
-    # Networks layers
-    # As Neon supports many layers types, including Linear Convolution,
-    #    Bias, Activation, and Pooling. For that, neon provides shortcuts:
-    #    Conv = Convolution + Bias + Activation
-    #    Affine = Linear + Bias + Activation
-
-    print "[INFO]: Making the layers."
-
-    # We are going to create a tiny network with two Conv, two Pooling, and two Affine layers.
-    #    fshape = (width, height, # of filters)
-
-    init_uni = Uniform(low=-0.1, high=0.1)
-    layers = [Conv(fshape=(5, 5, 16), init=init_uni, activation=Rectlin()),
-              Pooling(fshape=2, strides=2),
-              Conv(fshape=(5, 5, 32), init=init_uni, activation=Rectlin()),
-              Pooling(fshape=2, strides=2),
-              Affine(nout=500, init=init_uni, activation=Rectlin()),
-              Affine(nout=2, init=init_uni, activation=Softmax())]
-
-    """
-    init_norm = Gaussian(loc=0.0, scale=0.01)
-    layers = [Affine(nout=100, init=init_norm, activation=Rectlin()),
-              (Affine(nout=2, init=init_norm, activation=Softmax()))]
-    """
-
-    print "[SETU]: Setting the layers up."
-    # Seting up of the model
-    model = Model(layers)
+    # Cost
 
     print "[INFO]: Creating the cost function."
     # Setting up the cost function of network output
     cost = GeneralizedCost(costfunc=CrossEntropyMulti())
+
+    # Optimizer
 
     print "[INFO]: Setting the optimizer with values: learning_rate=0.005, momentum_coef=0.9."
     # Optimizer
@@ -181,14 +157,24 @@ if train_again == "y":
     optimizer = GradientDescentMomentum(learning_rate=0.005, momentum_coef=0.9)
     # optimizer = GradientDescentMomentum(0.1, momentum_coef=0.9)
 
+    # Build Model
+
+    model = train_functs.build_model(16, 128)
+
     print "[INFO]: Creating the Callbacks."
     callbacks = Callbacks(model, train_set)
+
+
+    print train_set.shape
+
 
     print "[INFO]: Making the Neural Network with \"5\" epochs."
     model.fit(dataset=train_set, cost=cost, optimizer=optimizer, num_epochs=5, callbacks=callbacks)
 
     print "[BACK]: Saving the model with the name \"pdi_model.prm\"."
     model.save_params("cnn-trained_model.prm")
+
+    sys.exit(48)
 
 else:
     print "[INFO]: Network already created."

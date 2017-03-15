@@ -204,12 +204,17 @@ def loading_set_for_training(path_features):
             # Save the new non_face image
             l_non_faces.append(img_cut)
 
-    print "[INFO]: Read and Cutting Done"
+    print "[INFO]: Read and Cutting Faces and Non-Faces Done"
 
     np_data_set = np.concatenate((l_faces, l_non_faces))
     np_label_set = np.concatenate(([1] * len(l_faces), [0] * len(l_faces)))
 
-    train_set = ArrayIterator(X=np_data_set, y=np_label_set, nclass=2, lshape=(120, 120, 3))
+    print "\t Data_set size: ", np_data_set.shape
+    print "\t Label_set size:", np_label_set.shape
+
+    print "[INFO]: Creating the ArrayIterator of training set"
+
+    train_set = ArrayIterator(X=np_data_set, y=np_label_set, nclass=2, lshape=(3, 120, 120))
 
     return train_set
 
