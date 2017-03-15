@@ -18,11 +18,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="face-detection.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="face-detection.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/face-detection.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="560">
-              <caret line="196" column="30" lean-forward="false" selection-start-line="196" selection-start-column="30" selection-end-line="196" selection-end-column="30" />
+            <state relative-caret-position="492">
+              <caret line="191" column="82" lean-forward="false" selection-start-line="191" selection-start-column="82" selection-end-line="191" selection-end-column="82" />
               <folding>
                 <element signature="e#68#82#0" expanded="true" />
               </folding>
@@ -30,13 +30,14 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="train_functs.py" pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/train_functs.py">
+      <file leaf-file-name="cnn_functs.py" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/cnn_functs.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="638">
-              <caret line="103" column="31" lean-forward="false" selection-start-line="103" selection-start-column="31" selection-end-line="103" selection-end-column="31" />
+            <state relative-caret-position="196">
+              <caret line="231" column="27" lean-forward="false" selection-start-line="231" selection-start-column="4" selection-end-line="231" selection-end-column="27" />
               <folding>
                 <element signature="e#23#37#0" expanded="true" />
+                <element signature="e#7723#8636#1" expanded="false" />
               </folding>
             </state>
           </provider>
@@ -45,8 +46,8 @@
       <file leaf-file-name="basic_functs.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/basic_functs.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="247">
-              <caret line="216" column="4" lean-forward="false" selection-start-line="216" selection-start-column="4" selection-end-line="216" selection-end-column="4" />
+            <state relative-caret-position="204">
+              <caret line="27" column="38" lean-forward="false" selection-start-line="27" selection-start-column="38" selection-end-line="27" selection-end-column="38" />
               <folding>
                 <element signature="e#23#37#0" expanded="true" />
               </folding>
@@ -97,9 +98,10 @@
         <option value="$PROJECT_DIR$/test_script.py" />
         <option value="$PROJECT_DIR$/imports.py" />
         <option value="$PROJECT_DIR$/functions.py" />
-        <option value="$PROJECT_DIR$/basic_functs.py" />
         <option value="$PROJECT_DIR$/train_functs.py" />
+        <option value="$PROJECT_DIR$/basic_functs.py" />
         <option value="$PROJECT_DIR$/face-detection.py" />
+        <option value="$PROJECT_DIR$/cnn_functs.py" />
       </list>
     </option>
   </component>
@@ -432,18 +434,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/basic_functs.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="247">
-          <caret line="216" column="4" lean-forward="false" selection-start-line="216" selection-start-column="4" selection-end-line="216" selection-end-column="4" />
-          <folding>
-            <element signature="e#23#37#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/train_functs.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="638">
-          <caret line="103" column="31" lean-forward="false" selection-start-line="103" selection-start-column="31" selection-end-line="103" selection-end-column="31" />
+        <state relative-caret-position="204">
+          <caret line="27" column="38" lean-forward="false" selection-start-line="27" selection-start-column="38" selection-end-line="27" selection-end-column="38" />
           <folding>
             <element signature="e#23#37#0" expanded="true" />
           </folding>
@@ -452,10 +444,21 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/face-detection.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="560">
-          <caret line="196" column="30" lean-forward="false" selection-start-line="196" selection-start-column="30" selection-end-line="196" selection-end-column="30" />
+        <state relative-caret-position="492">
+          <caret line="191" column="82" lean-forward="false" selection-start-line="191" selection-start-column="82" selection-end-line="191" selection-end-column="82" />
           <folding>
             <element signature="e#68#82#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/cnn_functs.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="196">
+          <caret line="231" column="27" lean-forward="false" selection-start-line="231" selection-start-column="4" selection-end-line="231" selection-end-column="27" />
+          <folding>
+            <element signature="e#23#37#0" expanded="true" />
+            <element signature="e#7723#8636#1" expanded="false" />
           </folding>
         </state>
       </provider>

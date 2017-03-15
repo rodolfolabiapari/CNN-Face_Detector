@@ -31,7 +31,7 @@ from neon.initializers import Gaussian
 import time
 
 import basic_functs
-import train_functs
+import cnn_functs
 
 print "[INFO]: Library read."
 
@@ -135,8 +135,8 @@ elif data_set == "cifar_100":
     print "[INFO]: Loading CIFAR_100 done"
 
 """
-
-train_set = basic_functs.loading_set_for_training("./data_sets/FDDB-folds/FDDB-fold-01-ellipseList-1.txt")
+# TODO folders
+train_set = cnn_functs.loading_set_for_training("./data_sets/FDDB-folds/FDDB-fold-01-ellipseList-1.txt")
 
 
 if train_again == "y":
@@ -159,7 +159,7 @@ if train_again == "y":
 
     # Build Model
 
-    model = train_functs.build_model(16, 128)
+    model = cnn_functs.build_model(16, 128)
 
     # Callback
 
@@ -186,6 +186,11 @@ else:
     print "[LOAD]: Loading the model with the name \"cnn-trained_model.prm\"."
 
     model = Model("cnn-trained_model.prm")
+
+
+# Todo Folders
+test_set = cnn_functs.loading_set_for_testing("./data_sets/FDDB-folds/FDDB-fold-01-1.txt")
+
 
 miss_test = False# or True
 error_pct = 0
