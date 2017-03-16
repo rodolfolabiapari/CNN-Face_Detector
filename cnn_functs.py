@@ -29,7 +29,6 @@ import basic_functs
 from neon.initializers import Gaussian
 
 
-
 class Figura_Class:
     description = "<major_axis_radius minor_axis_radius angle center_x center_y>"
 
@@ -196,7 +195,7 @@ def loading_set_for_training(path_features):
             y = [feature_int[4] - feature_int[0], feature_int[4] + feature_int[0]]
             x = [feature_int[3] - feature_int[0], feature_int[3] + feature_int[0]]
 
-            img_cut = basic_functs.cut_img(x, y, img)
+            img_cut = basic_functs.cut_and_resize_img(x, y, img)
 
             # Save the new face img
             l_faces.append(img_cut)
@@ -209,7 +208,7 @@ def loading_set_for_training(path_features):
             y = [shift_y - feature_int[0], shift_y + feature_int[0]]
             x = [shift_x - feature_int[0], shift_x + feature_int[0]]
 
-            img_cut = basic_functs.cut_img(x, y, img)
+            img_cut = basic_functs.cut_and_resize_img(x, y, img)
 
             # Save the new non_face image
             l_non_faces.append(img_cut)
@@ -253,9 +252,67 @@ def loading_set_for_testing(paths):
 
         s_line = f_paths.readline()
 
+    return l_figure_class
 
-    sys.exit(66)
 
+def making_regions(l_figure_class):
+    print "[INFO]: Generating the Regions"
+
+    l_new_images = []
+    l_batch = []
+
+    # For each Image
+    for Figura_original in l_figure_class:
+
+        bound = 120
+        interval = 90
+
+        quant_new_images = 0
+
+        while bound < Figura_original.get_image().shape[0] or \
+                        bound < Figura_original.get_image().shape[1]:
+            # print bound, "<", Figura_original.get_image().shape[0], bound, "<" Figura_original.get_image().shape[1]
+
+            # Y
+            for edge_y_axis in range(bound, Figura_original.get_image().shape[0], interval):
+
+                # X
+                for edge_x_axis in range(bound, Figura_original.get_image().shape[1], interval):
+                    crop_img = Figura_original.get_image()[edge_y_axis - bound: edge_y_axis
+                               ][:, edge_x_axis - bound: edge_x_axis][:]
+
+                    #print edge_y_axis, edge_x_axis, crop_img.shape, Figura_original.get_image().shape
+
+                    # TODO ADICIONAR A NOVA IMAGEM NA LIST
+                    if bound > 120:
+                        l_new_images.append(basic_functs.resize_img(crop_img))
+                    else:
+                        l_new_images.append(np.array(crop_img).reshape(-1))
+
+                    quant_new_images += 1
+
+                    if quant_new_images >= 128:
+                        break
+
+                if quant_new_images >= 128:
+                    break
+
+            bound += 60
+            interval = bound - bound / 4
+
+        l_batch.append(l_new_images)
+
+    return np.array(l_batch)
+
+
+def test_inference(batches, model):
+
+    batch = batches[0]
+    #for batch in batches:
+
+    print np.array(batch).shape
+
+    print "[INFO]: Making the tests"
 
 """
 

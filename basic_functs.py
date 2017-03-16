@@ -27,7 +27,7 @@ from PIL import Image
 import numpy as np
 from neon.initializers import Gaussian
 
-def cut_img(x, y, img):
+def cut_and_resize_img(x, y, img):
     standard = 120
 
     x_range = range(x[0], x[1])
@@ -40,6 +40,17 @@ def cut_img(x, y, img):
     hsize = 120
 
     crop_img = new_img.resize((standard, hsize), Image.ANTIALIAS)
+
+    return np.array(crop_img).reshape(-1)
+
+
+
+def resize_img(img):
+    standard = 120
+
+    new_img = Image.fromarray(img, 'RGB')
+
+    crop_img = new_img.resize((standard, standard), Image.ANTIALIAS)
 
     return np.array(crop_img).reshape(-1)
 

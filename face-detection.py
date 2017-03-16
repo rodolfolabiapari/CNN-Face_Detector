@@ -7,7 +7,48 @@ import os.path
 #
 import sys
 
-import cPickle
+
+
+
+class Figura_Class:
+    description = "<major_axis_radius minor_axis_radius angle center_x center_y>"
+
+    def __init__(self, path="", number_faces=0):
+        self.path = path
+        self.number_faces = number_faces
+        self.faces_positions = []
+        self.image = []
+
+    def get_path(self):
+        return self.path
+
+    def set_path(self, path):
+        self.path = path
+
+    # Nun_Faces
+
+    def get_number_faces(self):
+        return self.number_faces
+
+    def set_number_faces(self, number_faces):
+        self.number_faces = number_faces
+
+    # Image
+
+    def get_image(self):
+        return self.image
+
+    def set_image(self, image):
+        self.image = image
+
+    # Face
+
+    def add_face_position(self, vector):
+        self.faces_positions.append(vector)
+
+    def get_face_positions(self):
+        return self.faces_positions
+
 
 # Backend
 from neon.backends import gen_backend
@@ -38,7 +79,7 @@ print "[INFO]: Library read."
 print "[SETU]: Setting the CPU."
 
 # TODO alterar o batch para o valor de execuoces
-be = gen_backend(backend="cpu", batch_size=1)
+be = gen_backend(backend="cpu", batch_size=128)
 
 print "[INFO]: Information about backend:"
 
@@ -189,8 +230,7 @@ else:
 
 
 # Todo Folders
-test_set = cnn_functs.loading_set_for_testing("./data_sets/FDDB-folds/FDDB-fold-01-1.txt")
-
+test_Figures = cnn_functs.loading_set_for_testing("./data_sets/FDDB-folds/FDDB-fold-01-1.txt")
 
 miss_test = False# or True
 error_pct = 0
@@ -201,3 +241,6 @@ if miss_test:
 end = time.time()
 print "\tTime spend to organize: ", end - start, 'seconds'
 print "\tMiss classification error = %.3f%%" % error_pct
+
+
+cnn_functs.making_regions(test_Figures, model)
