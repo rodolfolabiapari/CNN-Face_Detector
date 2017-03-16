@@ -24,6 +24,7 @@ import urllib
 from random import randrange
 # crop and resize to 32x32
 from PIL import Image
+import time
 import numpy as np
 import basic_functs
 from neon.initializers import Gaussian
@@ -116,6 +117,9 @@ def build_model(network_depth, num_features):
 
 def loading_set_for_training(path_features):
     print "[INFO]: Loading FDDB"
+
+    start = time.time()
+
     # Lendo diretorio das imagens
     file_features = open(path_features, "r")
 
@@ -134,8 +138,9 @@ def loading_set_for_training(path_features):
         # Recebe o caminho da imagem
         l_figure_class[number_figures].set_path(s_line[:len(s_line) - 1] + ".jpg")
 
-        l_figure_class[number_figures].set_image(basic_functs.load_image("./data_sets/originalPics/" +
-                                                            l_figure_class[number_figures].get_path()))
+        l_figure_class[number_figures].set_image(
+            basic_functs.load_image("./data_sets/originalPics/" +
+                                    l_figure_class[number_figures].get_path()))
 
         # print "Dimensoes Imagem", l_figure_class[number_figures].get_image().shape
 
@@ -225,11 +230,17 @@ def loading_set_for_training(path_features):
 
     train_set = ArrayIterator(X=np_data_set, y=np_label_set, nclass=2, lshape=(3, 120, 120))
 
+    end = time.time()
+    print "\tTime spend to organize: ", end - start, 'seconds'
+
     return train_set
 
 
 def loading_set_for_testing(paths):
     print "[INFO]: Loading FDDB"
+
+    start = time.time()
+
     # Lendo diretorio das imagens
     f_paths = open(paths, "r")
 
@@ -252,26 +263,31 @@ def loading_set_for_testing(paths):
 
         s_line = f_paths.readline()
 
+
+    end = time.time()
+    print "\tTime spend to organize: ", end - start, 'seconds'
+
     return l_figure_class
 
 
-def making_regions(l_figure_class):
+def making_regions(l_Figure_class, batch_size):
     print "[INFO]: Generating the Regions"
 
-    l_new_images = []
+    start = time.time()
+
     l_batch = []
 
     # For each Image
-    for Figura_original in l_figure_class:
+    for Figura_original in l_Figure_class:
 
         bound = 120
         interval = 90
+        l_new_images = []
 
         quant_new_images = 0
 
         while bound < Figura_original.get_image().shape[0] or \
                         bound < Figura_original.get_image().shape[1]:
-            # print bound, "<", Figura_original.get_image().shape[0], bound, "<" Figura_original.get_image().shape[1]
 
             # Y
             for edge_y_axis in range(bound, Figura_original.get_image().shape[0], interval):
@@ -291,10 +307,10 @@ def making_regions(l_figure_class):
 
                     quant_new_images += 1
 
-                    if quant_new_images >= 128:
+                    if quant_new_images >= batch_size:
                         break
 
-                if quant_new_images >= 128:
+                if quant_new_images >= batch_size:
                     break
 
             bound += 60
@@ -302,17 +318,57 @@ def making_regions(l_figure_class):
 
         l_batch.append(l_new_images)
 
+
+    end = time.time()
+    print "\tTime spend to organize: ", end - start, 'seconds'
+
     return np.array(l_batch)
 
 
-def test_inference(batches, model):
-
-    batch = batches[0]
-    #for batch in batches:
-
-    print np.array(batch).shape
+def test_inference(batches, model, batch_size):
 
     print "[INFO]: Making the tests"
+
+    start = time.time()
+
+    l_inferences = []
+    l_out = []
+
+    #batch = batches[0]
+    for batch in batches:
+
+        x_new = np.zeros((batch_size, 120 * 120 * 3))
+
+        x_new[0:len(batch)] = batch
+
+        inference_out = ArrayIterator(X=x_new, y=None, nclass=2, lshape=(3, 120, 120))
+
+        l_inferences.append(inference_out)
+
+
+    for inference in l_inferences:
+        out = model.get_outputs(inference)
+
+        l_out.append(out)
+
+
+    end = time.time()
+    print "\tTime spend to organize: ", end - start, 'seconds'
+
+    print "[INFO]: Tests Done"
+
+    return l_out
+
+
+def analyze_results(l_out, l_Figura_class):
+    print "[INFO]: Analyzing the Results"
+
+    sys.exit(33)
+
+    for batch in l_out:
+        for region in batch:
+
+            sys.exit(99)
 
 """
 

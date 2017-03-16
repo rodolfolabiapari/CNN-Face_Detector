@@ -78,8 +78,10 @@ print "[INFO]: Library read."
 
 print "[SETU]: Setting the CPU."
 
+batch_size = 10
+
 # TODO alterar o batch para o valor de execuoces
-be = gen_backend(backend="cpu", batch_size=128)
+be = gen_backend(backend="cpu", batch_size=batch_size)
 
 print "[INFO]: Information about backend:"
 
@@ -88,7 +90,7 @@ print "\t", be
 
 # TODO arrumar o args
 train_again = basic_functs.verify_args()
-train_again = "n"
+train_again = "y"
 
 print "[DOWN]: Downloading the dataset of training."
 
@@ -200,7 +202,41 @@ if train_again == "y":
 
     # Build Model
 
-    model = cnn_functs.build_model(16, 128)
+    print "[INFO]: Making the layers."
+
+    # We are going to create a tiny network with two Conv, two Pooling, and two Affine layers.
+    #    fshape = (width, height, # of filters)
+
+    init_uni = Uniform(low=-0.1, high=0.1)
+    layers = [Conv(fshape=(5, 5, 16),
+                   init=init_uni,
+                   activation=Rectlin()),
+
+              Pooling(fshape=2, strides=2),
+
+              Conv(fshape=(5, 5, 32),
+                   init=init_uni,
+                   activation=Rectlin()),
+
+              Pooling(fshape=2, strides=2),
+
+              Affine(nout=500,
+                     init=init_uni,
+                     activation=Rectlin()),
+
+              Affine(nout=2,
+                     init=init_uni,
+                     activation=Softmax())]
+
+    """
+    init_norm = Gaussian(loc=0.0, scale=0.01)
+    layers = [Affine(nout=100, init=init_norm, activation=Rectlin()),
+              (Affine(nout=2, init=init_norm, activation=Softmax()))]
+    """
+
+    print "[SETU]: Setting the layers up."
+    # Seting up of the model
+    model = Model(layers)
 
     # Callback
 
@@ -232,7 +268,7 @@ else:
 # Todo Folders
 test_Figures = cnn_functs.loading_set_for_testing("./data_sets/FDDB-folds/FDDB-fold-01-1.txt")
 
-miss_test = False# or True
+miss_test = False or True
 error_pct = 0
 print "[INFO]: Checking the Misclassification of error."
 start = time.time()
@@ -243,4 +279,10 @@ print "\tTime spend to organize: ", end - start, 'seconds'
 print "\tMiss classification error = %.3f%%" % error_pct
 
 
-cnn_functs.making_regions(test_Figures, model)
+l_batches = cnn_functs.making_regions(test_Figures, batch_size)
+
+sys.exit(13)
+
+l_out = cnn_functs.test_inference(l_batches, model, batch_size)
+
+cnn_functs.analyze_results(l_out, test_Figures)
