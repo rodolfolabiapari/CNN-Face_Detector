@@ -122,6 +122,8 @@ def loading_set_for_training(diretorios):
     l_figure_class = []
     number_figures = 0
 
+    start = time.time()
+
     for diretorio in diretorios:
         # Lendo diretorio das imagens
         file_features = open(diretorio, "r")
@@ -194,10 +196,16 @@ def loading_set_for_training(diretorios):
         file_features.close()
 
 
+    end = time.time()
+    print "\tTime spend to organize: ", end - start, 'seconds', "\n"
+
+
     print "[INFO]: Cutting the images, getting the faces and non-faces"
 
+    start = time.time()
+
     for i in range(0, number_figures):
-        sys.stdout.write("\rProcessed: " + str(i) + " of " + str(number_figures) + ". \tCompleted: " + str((i+1) / float(number_figures) * 100.0 ) + "%")
+        sys.stdout.write("\r\tProcessed: " + str(i + 1) + " of " + str(number_figures) + ". \tCompleted: " + str((i+1) / float(number_figures) * 100.0 ) + "%")
         sys.stdout.flush()
         #       0                 1             2       3        4
         # <major_axis_radius minor_axis_radius angle center_x center_y>
@@ -225,6 +233,8 @@ def loading_set_for_training(diretorios):
 
             # basic_functs.show_img(img_cut)
 
+            # basic_functs.save_image(img_cut, "./face/" + str(randrange(1, stop=10000)) + ".jpg")
+
             # Save the new face img
             l_faces.append(img_cut)
 
@@ -243,26 +253,30 @@ def loading_set_for_training(diretorios):
             img_cut = basic_functs.cut_and_resize_img(x_non_face, y_non_face, img)
 
             # basic_functs.show_img(img_cut)
+            # basic_functs.save_image(img_cut, "./non_face/" + str(randrange(1, stop=10000)) + ".jpg")
 
             # Save the new non_face image
             l_non_faces.append(img_cut)
 
-    print "\n[INFO]: Read and Cutting Faces and Non-Faces Done"
+    print "\n\n[INFO]: Read and Cutting Faces and Non-Faces Done"
+
+    end = time.time()
+    print "\tTime spend to organize: ", end - start, 'seconds', "\n"
 
     np_data_set = np.concatenate((l_faces, l_non_faces))
     np_label_set = np.concatenate(([1] * len(l_faces), [0] * len(l_faces)))
 
-    print "\tData_set size (quant, size): ", np_data_set.shape
-    print "\tLabel_set size (quant,):     ", np_label_set.shape
+    print "\tData_set size  (quant, size): ", np_data_set.shape
+    print "\tLabel_set size (quant,):      ", np_label_set.shape, "\n"
 
     print "[INFO]: Creating the ArrayIterator of training set"
 
     train_set = ArrayIterator(X=np_data_set, y=np_label_set, nclass=2, lshape=(3, 120, 120))
 
     end = time.time()
-    print "\tTime spend to organize: ", end - start, 'seconds'
+    print "\tTime spend to organize: ", end - start, 'seconds', "\n"
 
-    return train_set
+    return train_set, l_figure_class
 
 
 def loading_set_for_testing(paths):
@@ -294,7 +308,7 @@ def loading_set_for_testing(paths):
 
 
     end = time.time()
-    print "\tTime spend to organize: ", end - start, 'seconds'
+    print "\tTime spend to organize: ", end - start, 'seconds', "\n"
 
     return l_figure_class
 
@@ -350,19 +364,47 @@ def making_regions(l_Figure_class, batch_size):
 
         l_batch.append(l_new_images)
 
+    print "\tNumbers of Batchs for cropped images: ", len(l_batch)
+    print "\t\tNumbers of cropped images: ", len(l_batch[0])
 
     end = time.time()
-    print "\tTime spend to organize: ", end - start, 'seconds'
+    print "\tTime spend to organize: ", end - start, 'seconds', "\n"
 
     return np.array(l_batch)
 
 
-def test_inference(batches, model, batch_size):
+def generate_inference(batches, batch_size):
+
+    print "[INFO]: Creating the ArrayIteratos for test"
+
+    start = time.time()
+
+    l_inferences = []
+
+    for batch in batches:
+
+        x_new = np.zeros((batch_size, 120 * 120 * 3))
+
+        x_new[0:len(batch)] = batch
+
+        inference_out = ArrayIterator(X=x_new, y=None, nclass=2, lshape=(3, 120, 120))
+
+        l_inferences.append(inference_out)
+
+    end = time.time()
+    print "\tTime spend to generate the inferences: ", end - start, 'seconds', "\n"
+
+    return l_inferences
+
+
+def test_inference(l_inferences, model):
 
     print "[INFO]: Making the tests"
 
     start = time.time()
+    l_out = []
 
+    """
     l_inferences = []
     l_out = []
 
@@ -376,16 +418,22 @@ def test_inference(batches, model, batch_size):
         inference_out = ArrayIterator(X=x_new, y=None, nclass=2, lshape=(3, 120, 120))
 
         l_inferences.append(inference_out)
+    """
 
+    print "\tNumbers of Batchs with ArrayIteratos: ", len(l_inferences)
 
+    i = 1
     for inference in l_inferences:
+        sys.stdout.write("\r\tProcessed: " + str(i) + " of " + str(len(l_inferences)) + ". \tCompleted: " + str((i) / float(len(l_inferences)) * 100.0 ) + "%")
+        sys.stdout.flush()
         out = model.get_outputs(inference)
 
         l_out.append(out)
+        i += 1
 
 
     end = time.time()
-    print "\tTime spend to organize: ", end - start, 'seconds'
+    print "\tTime spend to generate the outputs: ", end - start, 'seconds', "\n"
 
     print "[INFO]: Tests Done"
 
@@ -399,8 +447,8 @@ def analyze_results(l_out, l_Figura_class):
         for region in batch:
             print region
 
-            sys.exit(99)
 
+        sys.exit(99)
 """
 
 # an image of a frog from wikipedia

@@ -84,7 +84,8 @@ def load_image(directory):
 
 
 def save_image(np_data, directory):
-    img_saving = Image.fromarray(np.asarray(np.clip(np_data, 0, 255), dtype="uint8"), "L")
+    buffer = np_data.reshape((120, 120, 3))
+    img_saving = Image.fromarray(buffer, "RGB")
     img_saving.save(directory)
 
 

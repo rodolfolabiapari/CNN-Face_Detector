@@ -78,7 +78,8 @@ print "[INFO]: Library read."
 
 print "[SETU]: Setting the CPU."
 
-batch_size = 10
+# Nao deve ser maior que o numero de imagens trabalhadas
+batch_size = 30
 
 # TODO alterar o batch para o valor de execuoces
 be = gen_backend(backend="cpu", batch_size=batch_size)
@@ -86,7 +87,7 @@ be = gen_backend(backend="cpu", batch_size=batch_size)
 print "[INFO]: Information about backend:"
 
 # Testing for verification
-print "\t", be
+print "\t", be, "\n"
 
 # TODO arrumar o args
 train_again = basic_functs.verify_args()
@@ -183,9 +184,10 @@ diretorios = [#"./data_sets/FDDB-folds/FDDB-fold-01-ellipseList.txt",
               #"./data_sets/FDDB-folds/FDDB-fold-02-ellipseList.txt",
               #"./data_sets/FDDB-folds/FDDB-fold-03-ellipseList.txt",
               #"./data_sets/FDDB-folds/FDDB-fold-04-ellipseList.txt",
-              "./data_sets/FDDB-folds/FDDB-fold-05-ellipseList.txt"
+              #"./data_sets/FDDB-folds/FDDB-fold-05-ellipseList.txt"
+              "./data_sets/FDDB-folds/FDDB-fold-01-ellipseList-1.txt"
               ]
-train_set = cnn_functs.loading_set_for_training(diretorios)
+train_set, train_Figures = cnn_functs.loading_set_for_training(diretorios)
 
 
 if train_again == "y":
@@ -198,14 +200,6 @@ if train_again == "y":
     # Setting up the cost function of network output
     cost = GeneralizedCost(costfunc=CrossEntropyMulti())
 
-    # Optimizer
-
-    print "[INFO]: Setting the optimizer with values: learning_rate=0.005, momentum_coef=0.9."
-    # Optimizer
-    #    Having the cost function, we want minimize it.
-    optimizer = GradientDescentMomentum(learning_rate=0.005, momentum_coef=0.9)
-    # optimizer = GradientDescentMomentum(0.1, momentum_coef=0.9)
-
     # Build Model
 
     print "[INFO]: Making the layers."
@@ -216,7 +210,7 @@ if train_again == "y":
     type_network = "c"
 
     if type_network == "c":
-        print "\tCreating a Convolutional Network."
+        print "\tCreating a Convolutional Network.\n"
         init_uni = Uniform(low=-0.1, high=0.1)
         layers = [Conv(fshape=(5, 5, 16),
                        init=init_uni,
@@ -238,13 +232,25 @@ if train_again == "y":
                          init=init_uni,
                          activation=Softmax())]
 
+        # Optimizer
+
+        print "[INFO]: Setting the optimizer with values: learning_rate=0.005, momentum_coef=0.9."
+        # Optimizer
+        #    Having the cost function, we want minimize it.
+        #optimizer = GradientDescentMomentum(learning_rate=0.005, momentum_coef=0.9)
+        optimizer = GradientDescentMomentum(learning_rate=0.005, momentum_coef=0.9)
+
     elif type_network == "a":
-        print "\tCreating a Network Full Conected."
+        print "\tCreating a Network Full Conected.\n"
         init_norm = Gaussian(loc=0.0, scale=0.01)
         layers = [Affine(nout=100, init=init_norm, activation=Rectlin()),
                   Affine(nout=50, init=init_norm, activation=Rectlin()),
-                  (Affine(nout=2, init=init_norm, activation=Softmax()))]
+                  Affine(nout=2, init=init_norm, activation=Softmax())]
+
+        optimizer = GradientDescentMomentum(0.1, momentum_coef=0.9)
+
     else:
+        print "[ERRO]: Please, choise the correct type of layer."
         sys.exit(11)
 
 
@@ -266,6 +272,7 @@ if train_again == "y":
     model.fit(dataset=train_set, cost=cost, optimizer=optimizer, num_epochs=7, callbacks=callbacks)
     end = time.time()
     print "\tTime spend to organize: ", end - start, 'seconds'
+    print "\tTime spend to organize: ", (end - start) / 60.0, 'minutes\n'
 
     # Saving
 
@@ -280,22 +287,27 @@ else:
 
 
 # Todo Folders
-test_Figures = cnn_functs.loading_set_for_testing("./data_sets/FDDB-folds/FDDB-fold-01-1.txt")
+#test_Figures = cnn_functs.loading_set_for_testing("./data_sets/FDDB-folds/FDDB-fold-01-1.txt")
+
+# l_batches_test = cnn_functs.making_regions(test_Figures, batch_size)
+l_batches_train = cnn_functs.making_regions(train_Figures, batch_size)
+
+#test_set = cnn_functs.generate_inference(l_batches_test, batch_size)
+train_sets = cnn_functs.generate_inference(l_batches_train, batch_size)
+
+#l_out = cnn_functs.test_inference(l_batches, model, batch_size)
+l_out = cnn_functs.test_inference(train_sets, model)
 
 miss_test = False or True
 error_pct = 0
 print "[INFO]: Checking the Misclassification of error."
 start = time.time()
 if miss_test:
-    error_pct = 100 * model.eval(train_set, metric=Misclassification())
+    error_pct = 100 * model.eval(train_sets[2], metric=Misclassification())
 end = time.time()
 print "\tTime spend to organize: ", end - start, 'seconds'
-print "\tMiss classification error = %.3f%%" % error_pct
+print "\tMiss classification error = %.3f%%" % error_pct, "\n"
 
 
-l_batches = cnn_functs.making_regions(test_Figures, batch_size)
-
-
-l_out = cnn_functs.test_inference(l_batches, model, batch_size)
-
-cnn_functs.analyze_results(l_out, test_Figures)
+#cnn_functs.analyze_results(l_out, test_Figures)
+cnn_functs.analyze_results(l_out, train_Figures)
