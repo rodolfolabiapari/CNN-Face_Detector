@@ -179,7 +179,13 @@ elif data_set == "cifar_100":
 
 """
 # TODO folders
-train_set = cnn_functs.loading_set_for_training("./data_sets/FDDB-folds/FDDB-fold-01-ellipseList-1.txt")
+diretorios = [#"./data_sets/FDDB-folds/FDDB-fold-01-ellipseList.txt",
+              #"./data_sets/FDDB-folds/FDDB-fold-02-ellipseList.txt",
+              #"./data_sets/FDDB-folds/FDDB-fold-03-ellipseList.txt",
+              #"./data_sets/FDDB-folds/FDDB-fold-04-ellipseList.txt",
+              "./data_sets/FDDB-folds/FDDB-fold-05-ellipseList.txt"
+              ]
+train_set = cnn_functs.loading_set_for_training(diretorios)
 
 
 if train_again == "y":
@@ -207,32 +213,40 @@ if train_again == "y":
     # We are going to create a tiny network with two Conv, two Pooling, and two Affine layers.
     #    fshape = (width, height, # of filters)
 
-    init_uni = Uniform(low=-0.1, high=0.1)
-    layers = [Conv(fshape=(5, 5, 16),
-                   init=init_uni,
-                   activation=Rectlin()),
+    type_network = "c"
 
-              Pooling(fshape=2, strides=2),
+    if type_network == "c":
+        print "\tCreating a Convolutional Network."
+        init_uni = Uniform(low=-0.1, high=0.1)
+        layers = [Conv(fshape=(5, 5, 16),
+                       init=init_uni,
+                       activation=Rectlin()),
 
-              Conv(fshape=(5, 5, 32),
-                   init=init_uni,
-                   activation=Rectlin()),
+                  Pooling(fshape=2, strides=2),
 
-              Pooling(fshape=2, strides=2),
+                  Conv(fshape=(5, 5, 32),
+                       init=init_uni,
+                       activation=Rectlin()),
 
-              Affine(nout=500,
-                     init=init_uni,
-                     activation=Rectlin()),
+                  Pooling(fshape=2, strides=2),
 
-              Affine(nout=2,
-                     init=init_uni,
-                     activation=Softmax())]
+                  Affine(nout=500,
+                         init=init_uni,
+                         activation=Rectlin()),
 
-    """
-    init_norm = Gaussian(loc=0.0, scale=0.01)
-    layers = [Affine(nout=100, init=init_norm, activation=Rectlin()),
-              (Affine(nout=2, init=init_norm, activation=Softmax()))]
-    """
+                  Affine(nout=2,
+                         init=init_uni,
+                         activation=Softmax())]
+
+    elif type_network == "a":
+        print "\tCreating a Network Full Conected."
+        init_norm = Gaussian(loc=0.0, scale=0.01)
+        layers = [Affine(nout=100, init=init_norm, activation=Rectlin()),
+                  Affine(nout=50, init=init_norm, activation=Rectlin()),
+                  (Affine(nout=2, init=init_norm, activation=Softmax()))]
+    else:
+        sys.exit(11)
+
 
     print "[SETU]: Setting the layers up."
     # Seting up of the model
@@ -245,11 +259,11 @@ if train_again == "y":
 
     # Training
 
-    print "[INFO]: Making the Neural Network with \"5\" epochs."
+    print "[INFO]: Making the Neural Network with \"7\" epochs."
     print "\tEpoch: ;\tBatches: Quantity Images to train;\tCost: ;"
 
     start = time.time()
-    model.fit(dataset=train_set, cost=cost, optimizer=optimizer, num_epochs=5, callbacks=callbacks)
+    model.fit(dataset=train_set, cost=cost, optimizer=optimizer, num_epochs=7, callbacks=callbacks)
     end = time.time()
     print "\tTime spend to organize: ", end - start, 'seconds'
 
@@ -281,7 +295,6 @@ print "\tMiss classification error = %.3f%%" % error_pct
 
 l_batches = cnn_functs.making_regions(test_Figures, batch_size)
 
-sys.exit(13)
 
 l_out = cnn_functs.test_inference(l_batches, model, batch_size)
 

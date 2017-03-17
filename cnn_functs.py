@@ -115,70 +115,90 @@ def build_model(network_depth, num_features):
 
 
 
-def loading_set_for_training(path_features):
+def loading_set_for_training(diretorios):
     print "[INFO]: Loading FDDB"
 
     start = time.time()
-
-    # Lendo diretorio das imagens
-    file_features = open(path_features, "r")
-
     l_figure_class = []
     number_figures = 0
 
-    # criando uma lista de diretorios
-    s_line = file_features.readline()
+    for diretorio in diretorios:
+        # Lendo diretorio das imagens
+        file_features = open(diretorio, "r")
 
-    while s_line != "":
-        # Instancia uma nova classe Figura
-        l_figure_class.append(Figura_Class())
-
-        # print "Linha lida: ", s_line
-
-        # Recebe o caminho da imagem
-        l_figure_class[number_figures].set_path(s_line[:len(s_line) - 1] + ".jpg")
-
-        l_figure_class[number_figures].set_image(
-            basic_functs.load_image("./data_sets/originalPics/" +
-                                    l_figure_class[number_figures].get_path()))
-
-        # print "Dimensoes Imagem", l_figure_class[number_figures].get_image().shape
-
-        # Define quantidade de rostos
+        # criando uma lista de diretorios
         s_line = file_features.readline()
 
-        # print "Linha lida: ", s_line
-        l_figure_class[number_figures].set_number_faces(int(s_line))
+        while s_line != "":
 
-        number_faces = l_figure_class[number_figures].get_number_faces()
-
-        # Le as informacoes de cada rosto
-        for index_face in range(0, number_faces):
-            s_line = file_features.readline()
+            # Instancia uma nova classe Figura
+            l_figure_class.append(Figura_Class())
 
             # print "Linha lida: ", s_line
 
-            # realiza o split
-            # <major_axis_radius minor_axis_radius angle center_x center_y 1>.
-            l_features_of_one_figure_buffer = s_line.split(" ")
+            # Recebe o caminho da imagem
+            l_figure_class[number_figures].set_path(s_line[:len(s_line) - 1] + ".jpg")
 
-            # Elimina o " " e o "1"
-            l_features_of_one_figure_buffer_cut = \
-                l_features_of_one_figure_buffer[:len(l_features_of_one_figure_buffer) - 2]
+            l_figure_class[number_figures].set_image(
+                basic_functs.load_image("./data_sets/originalPics/" +
+                                        l_figure_class[number_figures].get_path()))
 
-            # Adiciona a nova face no objeto
-            l_figure_class[number_figures].add_face_position(l_features_of_one_figure_buffer_cut)
+            if len(l_figure_class[number_figures].get_image().shape) == 3:
 
-        number_figures += 1
+                # basic_functs.show_img(l_figure_class[-1].get_image())
+                # sys.exit(11)
 
-        s_line = file_features.readline()
+                # print "Dimensoes Imagem", l_figure_class[number_figures].get_image().shape
 
-    l_faces = []
-    l_non_faces = []
+                # Define quantidade de rostos
+                s_line = file_features.readline()
+
+                # print "Linha lida: ", s_line
+                l_figure_class[number_figures].set_number_faces(int(s_line))
+
+                number_faces = l_figure_class[number_figures].get_number_faces()
+
+                # Le as informacoes de cada rosto
+                for index_face in range(0, number_faces):
+                    s_line = file_features.readline()
+
+                    # print "Linha lida: ", s_line
+
+                    # realiza o split
+                    # <major_axis_radius minor_axis_radius angle center_x center_y 1>.
+                    l_features_of_one_figure_buffer = s_line.split(" ")
+
+                    # Elimina o " " e o "1"
+                    l_features_of_one_figure_buffer_cut = \
+                        l_features_of_one_figure_buffer[:len(l_features_of_one_figure_buffer) - 2]
+
+                    # Adiciona a nova face no objeto
+                    l_figure_class[number_figures].add_face_position(l_features_of_one_figure_buffer_cut)
+
+                number_figures += 1
+
+                s_line = file_features.readline()
+
+            else:
+                del l_figure_class[number_figures]
+
+                s_line = file_features.readline()
+
+                for i in range(int(s_line) + 1):
+                    s_line = file_features.readline()
+                    # print "Linha lida: ", s_line
+
+        l_faces = []
+        l_non_faces = []
+
+        file_features.close()
+
 
     print "[INFO]: Cutting the images, getting the faces and non-faces"
 
     for i in range(0, number_figures):
+        sys.stdout.write("\rProcessed: " + str(i) + " of " + str(number_figures) + ". \tCompleted: " + str((i+1) / float(number_figures) * 100.0 ) + "%")
+        sys.stdout.flush()
         #       0                 1             2       3        4
         # <major_axis_radius minor_axis_radius angle center_x center_y>
 
@@ -187,6 +207,7 @@ def loading_set_for_training(path_features):
         img = l_figure_class[i].get_image()
 
         for feature in features:
+
             feature_int = [int(float(x)) for x in feature]
 
             if feature_int[4] + feature_int[0] > img.shape[0]:
@@ -202,29 +223,37 @@ def loading_set_for_training(path_features):
 
             img_cut = basic_functs.cut_and_resize_img(x, y, img)
 
+            # basic_functs.show_img(img_cut)
+
             # Save the new face img
             l_faces.append(img_cut)
 
             # NON FACE:
 
+            #       0                 1             2       3        4
+            # <major_axis_radius minor_axis_radius angle center_x center_y>
+
             shift_x = randrange(img.shape[1] - feature_int[0])
             shift_y = randrange(img.shape[0] - feature_int[0])
 
-            y = [shift_y - feature_int[0], shift_y + feature_int[0]]
-            x = [shift_x - feature_int[0], shift_x + feature_int[0]]
 
-            img_cut = basic_functs.cut_and_resize_img(x, y, img)
+            y_non_face = [shift_y - feature_int[0], shift_y + feature_int[0]]
+            x_non_face = [shift_x - feature_int[0], shift_x + feature_int[0]]
+
+            img_cut = basic_functs.cut_and_resize_img(x_non_face, y_non_face, img)
+
+            # basic_functs.show_img(img_cut)
 
             # Save the new non_face image
             l_non_faces.append(img_cut)
 
-    print "[INFO]: Read and Cutting Faces and Non-Faces Done"
+    print "\n[INFO]: Read and Cutting Faces and Non-Faces Done"
 
     np_data_set = np.concatenate((l_faces, l_non_faces))
     np_label_set = np.concatenate(([1] * len(l_faces), [0] * len(l_faces)))
 
-    print "\tData_set size: ", np_data_set.shape
-    print "\tLabel_set size:", np_label_set.shape
+    print "\tData_set size (quant, size): ", np_data_set.shape
+    print "\tLabel_set size (quant,):     ", np_label_set.shape
 
     print "[INFO]: Creating the ArrayIterator of training set"
 
@@ -313,6 +342,9 @@ def making_regions(l_Figure_class, batch_size):
                 if quant_new_images >= batch_size:
                     break
 
+            if quant_new_images >= batch_size:
+                break
+
             bound += 60
             interval = bound - bound / 4
 
@@ -363,10 +395,9 @@ def test_inference(batches, model, batch_size):
 def analyze_results(l_out, l_Figura_class):
     print "[INFO]: Analyzing the Results"
 
-    sys.exit(33)
-
     for batch in l_out:
         for region in batch:
+            print region
 
             sys.exit(99)
 

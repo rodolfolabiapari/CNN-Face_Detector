@@ -9,3 +9,5 @@ cnn-cifar_10-model.prm
 cnn-cifar_100-model.prm
 
 data_sets/
+
+cnn-trained_model.prm

@@ -27,22 +27,36 @@ from PIL import Image
 import numpy as np
 from neon.initializers import Gaussian
 
-def cut_and_resize_img(x, y, img):
-    standard = 120
+
+def show_img(img):
+
+    img_np = np.array(img)
+
+    if len(img_np.shape) == 1:
+        img_reshaped = img_np.reshape((120, 120, 3))
+    else:
+        img_reshaped = img_np
+
+    img_out = Image.fromarray(np.asarray(img_reshaped, dtype="uint8"), "RGB")
+    img_out.show()
+
+
+def cut_and_resize_img(x, y, img_original):
+    img = img_original
+    standard = hsize = 120
 
     x_range = range(x[0], x[1])
     y_range = range(y[0], y[1])
 
-    new_img = Image.fromarray(img[y_range][:, x_range][:], 'RGB')
+    # img[y_range][:, x_range]
+    matrix_cropped = img[y_range][:, x_range][:]
 
-    # wpercent = (standard / float(new_img.size[0]))
-    # hsize = int((float(new_img.size[1]) * float(wpercent)))
-    hsize = 120
+    #np_cropped = np.array(matrix_cropped)
+    img_thumbnail = Image.fromarray(np.asarray(matrix_cropped, dtype="uint8"), "RGB")
 
-    crop_img = new_img.resize((standard, hsize), Image.ANTIALIAS)
+    img_thumbnail = img_thumbnail.resize((standard, hsize), Image.ANTIALIAS)
 
-    return np.array(crop_img).reshape(-1)
-
+    return np.array(img_thumbnail).reshape(-1)
 
 
 def resize_img(img):
