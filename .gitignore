@@ -13,3 +13,7 @@ data_sets/
 cnn-trained_model.prm
 
 *.prm
+
+*.prm
+
+cnn-trained_model.prm
