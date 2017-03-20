@@ -1,5 +1,5 @@
 
-# Search files on path
+# Search files on s_path
 import os.path
 #
 import sys
@@ -18,7 +18,7 @@ from neon.models import Model
 from neon.optimizers import GradientDescentMomentum, RMSProp
 from neon.callbacks.callbacks import Callbacks
 
-# download the image
+# download the np_image
 import urllib
 # crop and resize to 32x32
 from PIL import Image
@@ -28,13 +28,13 @@ from neon.initializers import Gaussian
 import time
 
 
-# an image of a frog from wikipedia
+# an np_image of a frog from wikipedia
 # img_source =
 # "https://upload.wikimedia.org/wikipedia/
 # commons/thumb/5/55/Atelopus_zeteki1.jpg/440px-Atelopus_zeteki1.jpg"
 # img_source = "https://www.scienceabc.com/wp-content/uploads/2016/05/horse-running.jpg"
 
-# urllib.urlretrieve(img_source, filename="image.jpg")
+# urllib.urlretrieve(img_source, filename="np_image.jpg")
 
 model = Model("pdi_model.prm")
 
