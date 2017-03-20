@@ -63,12 +63,12 @@ print "[INFO]: Library read."
 print "[SETU]: Setting the CPU."
 
 
-CONST_batch_size = 4096          # The CONST_batch_size cannot backend bigger
+#CONST_batch_size = 4096          # The CONST_batch_size cannot backend bigger
                 # than amount images TODO DEVE SER AUTO
-# CONST_batch_size = 8
-CONST_num_epochs = 15             # Passages on through the dataset
-# CONST_num_epochs = 1
-CONST_size_image_algorithm = 40   # Size of training np_image
+CONST_batch_size = 3084
+
+CONST_num_epochs = 3             # Passages on through the dataset
+CONST_size_image_algorithm = 60   # Size of training np_image
 CONST_learning_rate = 0.005
 CONST_momentum = 0.9
 #CONST_train_again = basic_functs.verify_args()       # TODO arrumar o args
@@ -89,9 +89,9 @@ model = False
 l_directories_train = [
     #"./data_sets/FDDB-folds/FDDB-fold-01-ellipseList.txt",
     #"./data_sets/FDDB-folds/FDDB-fold-02-ellipseList.txt",
-    #"./data_sets/FDDB-folds/FDDB-fold-03-ellipseList.txt",
-    #"./data_sets/FDDB-folds/FDDB-fold-04-ellipseList.txt"
-    "./data_sets/FDDB-folds/FDDB-fold-01-ellipseList-1.txt"
+    "./data_sets/FDDB-folds/FDDB-fold-03-ellipseList.txt",
+    "./data_sets/FDDB-folds/FDDB-fold-04-ellipseList.txt"
+    #"./data_sets/FDDB-folds/FDDB-fold-01-ellipseList-1.txt"
 ]
 
 # Verify if there is necessity of re-train

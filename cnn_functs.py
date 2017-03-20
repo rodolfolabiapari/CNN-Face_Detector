@@ -113,7 +113,8 @@ def train_model(directories_train, const_size_image, num_epochs, learning_rate, 
     # Optimizer
 
     print "[INFO]: Setting the optimizer with values: " \
-          "CONST_learning_rate=0.005, momentum_coef=0.9."
+          "CONST_learning_rate=" + str(learning_rate) + \
+          ", momentum_coef=" + str(momentum) + "."
     # Optimizer
     #    Having the cost function, we want minimize it.
     optimizer = GradientDescentMomentum(learning_rate=learning_rate, momentum_coef=momentum)
@@ -224,6 +225,9 @@ def loading_set_for_training(directories, const_size_image):
                 basic_functs.load_image("./data_sets/originalPics/" +
                                         l_class_Figure[int_number_figures].get_path()))
 
+            # basic_functs.show_img(l_class_Figure[int_number_figures].get_image())
+
+
             # Verify if it np_image is colored
             if len(l_class_Figure[int_number_figures].get_image().shape) == 3:
 
@@ -311,6 +315,13 @@ def loading_set_for_training(directories, const_size_image):
             if int_feature[3] + int_feature[0] > np_img.shape[1]:
                 int_feature[3] -= int_feature[3] + int_feature[0] - (np_img.shape[1] - 1)
 
+            # Verify if np_image pass the edge of np_image
+            if int_feature[4] - int_feature[0] < 0:
+                int_feature[4] += abs(int_feature[4] + int_feature[0])
+
+            if int_feature[3] - int_feature[0] < 0:
+                int_feature[3] += abs(int_feature[3] + int_feature[0])
+
             # Calculate the interval where the face it is.
             y = [int_feature[4] - int_feature[0], int_feature[4] + int_feature[0]]
             x = [int_feature[3] - int_feature[0], int_feature[3] + int_feature[0]]
@@ -318,9 +329,7 @@ def loading_set_for_training(directories, const_size_image):
             # Cut
             np_img_cut = basic_functs.cut_and_resize_img(x, y, np_img, const_size_image)
 
-            basic_functs.show_img(np_img_cut, const_size_image)
-
-            sys.exit(11)
+            # basic_functs.show_img(np_img_cut, const_size_image)
 
             basic_functs.save_image(np_img_cut, "./train/face/f" + str(i) + "-" +
                                     str(randrange(1, stop=10000)) + ".jpg",
@@ -334,8 +343,8 @@ def loading_set_for_training(directories, const_size_image):
                 #       0                 1             2       3        4
                 # <major_a xis_radius minor_axis_radius angle center_x center_y>
 
-                shift_x = randrange(np_img.shape[1] - int_feature[0])
-                shift_y = randrange(np_img.shape[0] - int_feature[0])
+                shift_x = randrange(np_img.shape[1] - int_feature[0]) + int_feature[0]
+                shift_y = randrange(np_img.shape[0] - int_feature[0]) + int_feature[0]
 
                 y_non_face = [shift_y - int_feature[0], shift_y + int_feature[0]]
                 x_non_face = [shift_x - int_feature[0], shift_x + int_feature[0]]
@@ -358,7 +367,7 @@ def loading_set_for_training(directories, const_size_image):
 
     # Create a unique list with each np_image generate
     np_data_set = np.concatenate((l_np_faces, l_np_non_faces))
-    np_data_set = np.asarray(np_data_set)
+    np_data_set = np.asarray(np_data_set, dtype=np.uint8)
 
     # Create the labels
     np_label_set = np.concatenate(([1] * len(l_np_faces), [0] * len(l_np_faces) * 2))
@@ -378,10 +387,10 @@ def loading_set_for_training(directories, const_size_image):
     return train_set, l_class_Figure
 
 
-def loading_set_for_testing(directorys):
+def loading_set_for_testing(directories):
     """
     Procedure that loads the dataset for testing
-    :param directorys: List of directors
+    :param directories: List of directors
     :return: return the images.
     """
     print "[INFO]: Loading test FDDB"
@@ -391,7 +400,7 @@ def loading_set_for_testing(directorys):
     l_class_Figure = []
 
     # For each directory
-    for directory in directorys:
+    for directory in directories:
 
         # Opening the file
         f_paths = open(directory, "r")
@@ -480,15 +489,15 @@ def making_regions(l_class_figure, batch_size, const_size_image):
                     int_count_new_images += 1
 
                     # if the batch of this np_image list complete, stop to create new regions
-                    if int_count_new_images > batch_size:
+                    if int_count_new_images >= batch_size:
                         break
 
                 # if the batch of this np_image list complete, stop to create new regions
-                if int_count_new_images > batch_size:
+                if int_count_new_images >= batch_size:
                     break
 
             # if the batch of this np_image list complete, stop to create new regions
-            if int_count_new_images > batch_size:
+            if int_count_new_images >= batch_size:
                 break
 
             # if the batch of this np_image list complete, stop to create new regions
@@ -533,10 +542,11 @@ def generate_inference(batches, batch_size, const_size_image):
 
         # Create a new list empty
         x_new = np.zeros((batch_size, const_size_image *
-                          const_size_image * 3), dtype="float32")
+                          const_size_image * 3), dtype=np.uint8)
 
+        print len(batch)
         # Add the batch to the list
-        x_new[0:len(batch)] = np.asarray(batch)
+        x_new[0:len(batch)] = np.asarray(batch, dtype=np.uint8)
 
         # Create the array iterator from the new list
         inference_out = ArrayIterator(X=x_new, y=None, nclass=2,
@@ -600,34 +610,37 @@ def mark_result(np_img, position):
     :return: do not have return
     """
 
-    #np_img = np.array(image)
+    np_img_marked = np_img
+
+    #np_img_marked = np.array(image)
     coords = position
 
     edge_x_axis = coords[1]
     edge_y_axis = coords[0]
     bound = coords[2]
 
+    np_img_marked.flags.writeable = True
+
     # mark the y axis
     value = 255
     for y in range(edge_y_axis - bound, edge_y_axis):
-        np_img[edge_x_axis, y, 0] = value
-        np_img[edge_x_axis - bound, y, 0] = value
+        print edge_x_axis, edge_y_axis, bound, y
 
-        np_img[edge_x_axis, y, 1:2] = 0
-        np_img[edge_x_axis - bound, y, 1:2] = 0
+        np_img_marked[edge_x_axis, y, 0] = value
+        np_img_marked[edge_x_axis - bound, y, 0] = value
+
+        np_img_marked[edge_x_axis, y, 1:2] = 0
+        np_img_marked[edge_x_axis - bound, y, 1:2] = 0
 
     # Mark the x axis
     for x in range(edge_x_axis - bound, edge_x_axis):
-        np_img[x, edge_y_axis, 0] = value
-        np_img[x, edge_y_axis - bound, 0] = value
+        np_img_marked[x, edge_y_axis, 0] = value
+        np_img_marked[x, edge_y_axis - bound, 0] = value
 
-        np_img[x, edge_y_axis, 1:2] = 0
-        np_img[x, edge_y_axis - bound, 1:2] = 0
+        np_img_marked[x, edge_y_axis, 1:2] = 0
+        np_img_marked[x, edge_y_axis - bound, 1:2] = 0
 
-    # TODO a imagem ta mostrando back and whit
-    # basic_functs.show_img(np_img, bound)
-
-    return np_img
+    return np_img_marked
 
 
 def analyze_results(l_out, l_Figura_class):
@@ -652,13 +665,15 @@ def analyze_results(l_out, l_Figura_class):
             # se for encontrado algum rosto
 
             if region[0] > 0.5:
-                print "\tYes: ", region[0] * 100, "%\tNo: ", region[1] * 100, "%"
                 image_marked = True
 
-                img = mark_result(l_Figura_class[index].get_image(),
+                np_img = l_Figura_class[index].get_image()
+
+
+                np_img_cut = mark_result(np_img,
                                l_Figura_class[index].l_faces_positions[num_region])
 
-                l_Figura_class[index].set_image(img)
+                l_Figura_class[index].set_image(np_img_cut)
 
             if image_marked:
                 basic_functs.save_image(l_Figura_class[index].get_image(),
@@ -669,6 +684,7 @@ def analyze_results(l_out, l_Figura_class):
 
             if num_region >= len(l_Figura_class[index].l_faces_positions):
                 break
+
 
         index += 1
 

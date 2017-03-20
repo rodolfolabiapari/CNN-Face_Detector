@@ -9,7 +9,7 @@ from PIL import Image
 import numpy as np
 
 
-def show_img(np_img, size_image):
+def show_img(np_img, x=None, y=None):
     """
     Function that show the np_image without save it.
     :param img: np_image that will backend showed
@@ -17,8 +17,10 @@ def show_img(np_img, size_image):
     :return: do not have a return
     """
 
-    """
+    if y == None:
+        y = x
 
+    """
     # Convert the img to a numpy
     if "numpy" not in str(type(img)):
         np_img = np.array(img)
@@ -29,12 +31,14 @@ def show_img(np_img, size_image):
     # Verify if it is a vector or a matrix
     if len(np_img.shape) == 1:
         # If it is a vector, reshape to a matrix
-        img_reshaped = np_img.reshape((size_image, size_image, 3))
+        img_reshaped = np_img.reshape((x, y, 3))
     else:
         img_reshaped = np_img
 
+    print img_reshaped.shape
+
     # Convert the numpy to a Image
-    img_out = Image.fromarray(np.asarray(img_reshaped, gfh gf fhg dtype="uint16"))
+    img_out = Image.fromarray(np.asarray(img_reshaped, dtype=np.uint8), "RGB")
 
     # Do the show
     img_out.show()
@@ -52,20 +56,21 @@ def cut_and_resize_img(x, y, img_original, size_image):
     img = img_original
 
     # Generate the intervals
-    x_range = range(x[0], x[1])
-    y_range = range(y[0], y[1])
+    #x_range = range(x[0], x[1])
+    #y_range = range(y[0], y[1])
 
     # Cut the np_image
-    matrix_cropped = img[y_range][:, x_range][:]
+    # matrix_cropped = img[y_range][:, x_range][:]
+    matrix_cropped = img[y[0]: y[1], x[0]: x[1], :]
 
     # Transform to a Image Object
-    img_thumbnail = Image.fromarray(np.asarray(matrix_cropped), "RGB")
+    img_thumbnail = Image.fromarray(np.asarray(matrix_cropped, dtype=np.uint8), "RGB")
 
     # Resize the np_image
     img_thumbnail = img_thumbnail.resize((size_image, size_image), Image.ANTIALIAS)
 
     # Return the new np_image
-    return np.array(img_thumbnail, dtype="uint16").reshape(-1)
+    return np.array(img_thumbnail, dtype=np.uint8).reshape(-1)
 
 
 def resize_img(img, size_image):
@@ -83,7 +88,7 @@ def resize_img(img, size_image):
     crop_img = new_img.resize((size_image, size_image), Image.ANTIALIAS)
 
     # Return the new np_image
-    return np.array(crop_img, dtype="uint16").reshape(-1)
+    return np.array(crop_img, dtype=np.uint8).reshape(-1)
 
 
 def unpickle(directory):
@@ -106,8 +111,7 @@ def load_image(directory):
     """
     img_loading = Image.open(directory)
     img_loading.load()
-    np_img = np.asarray(img_loading, dtype="uint16")
-    return np_img
+    return np.asarray(img_loading, dtype=np.uint8)
 
 
 def save_image(np_img, directory, lin=None, col=None):
@@ -138,12 +142,9 @@ def save_image(np_img, directory, lin=None, col=None):
     else:
         img_reshaped = np_img
 
-
     # Save the np_image
-    img_out = Image.fromarray(np.asarray(img_reshaped, dtype="uint16"), "RGB")
+    img_out = Image.fromarray(np.asarray(img_reshaped, dtype=np.uint8), "RGB")
     img_out.save(directory)
-
-    sys.exit(22)
 
 
 def verify_args():
