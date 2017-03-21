@@ -64,12 +64,12 @@ class Figura_Class:
         return self.l_faces_positions
 
 
-def train_model(directories_train, const_size_image, num_epochs, learning_rate, momentum):
-    print "[DOWN]: Downloading the dataset of training."
+
+def train_model_fddb_94(num_files_94, l_directories_fddb_train,  const_size_image, num_epochs, learning_rate, momentum):
+    print "[DOWN]: Getting the dataset of training."
 
     # Load the images creating the training set
-    train_set, train_figures = loading_set_for_training(directories_train,
-                                                        const_size_image)
+    train_set = loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_image)
 
     print "[INFO]: The Neural Network was not created yet."
     print "[INFO]: Starting procedure of creating and training."
@@ -95,13 +95,13 @@ def train_model(directories_train, const_size_image, num_epochs, learning_rate, 
 
               Pooling(fshape=2, strides=2),
 
-              Conv(fshape=(5, 5, 48),
+              Conv(fshape=(10, 10, 48),
                    init=init_uni,
                    activation=Rectlin(), padding=True),
 
               Pooling(fshape=2, strides=2),
 
-              Affine(nout=128,
+              Affine(nout=500,
                      init=init_uni,
                      bias=init_uni,
                      activation=Rectlin()),
@@ -142,26 +142,113 @@ def train_model(directories_train, const_size_image, num_epochs, learning_rate, 
     # Saving
 
     print "[BACK]: Saving the model with the name \"cnn-trained_model.prm\".\n\n"
-    model.save_params("cnn-trained_model-"+ str(len(directories_train)) + "-" +
+    model.save_params("cnn-trained_model-"+ str(num_files_94) + "-" + str(len(l_directories_fddb_train)) + "-" +
                       str(const_size_image) + "-" +
                       str(num_epochs) + ".prm")
 
     return model
 
 
-def do_tests(directories_test, batch_size, const_size_image, model):
+def train_model(directories_train, const_size_image, num_epochs, learning_rate, momentum):
+    print "[DOWN]: Downloading the dataset of training."
+
+    # Load the images creating the training set
+    train_set = loading_set_for_training(directories_train, const_size_image)
+
+    print "[INFO]: The Neural Network was not created yet."
+    print "[INFO]: Starting procedure of creating and training."
+
+    # Procedure of Costs
+    #     Setting up the cost function of network output
+
+    print "[INFO]: Creating the cost function."
+    cost = GeneralizedCost(costfunc=CrossEntropyBinary())
+
+    # Procedure for Build Model
+
+    print "[INFO]: Making the layers."
+
+    # Network with two Conv, two Pooling, and two Affine layers.
+
+    print "\tCreating a Convolutional Network.\n"
+    init_uni = Uniform(low=-0.1, high=0.1)
+
+    layers = [Conv(fshape=(12, 12, 24),
+                   init=init_uni,
+                   activation=Rectlin(), padding=True),
+
+              Pooling(fshape=2, strides=2),
+
+              Conv(fshape=(10, 10, 48),
+                   init=init_uni,
+                   activation=Rectlin(), padding=True),
+
+              Pooling(fshape=2, strides=2),
+
+              Affine(nout=500,
+                     init=init_uni,
+                     bias=init_uni,
+                     activation=Rectlin()),
+
+              Affine(nout=2,
+                     init=init_uni,
+                     activation=Softmax())]
+
+    # Optimizer
+
+    print "[INFO]: Setting the optimizer with values: " \
+          "CONST_learning_rate=" + str(learning_rate) + \
+          ", momentum_coef=" + str(momentum) + "."
+    # Optimizer
+    #    Having the cost function, we want minimize it.
+    optimizer = GradientDescentMomentum(learning_rate=learning_rate, momentum_coef=momentum)
+
+    print "[SETU]: Setting the layers up."
+    # Seting up of the model
+    model = Model(layers)
+
+    # Callback
+
+    print "[INFO]: Creating the Callbacks."
+    callbacks = Callbacks(model, train_set)
+
+    # Training
+
+    print "[INFO]: Making the Neural Network with", num_epochs, "epochs."
+
+    start = time.time()
+    model.fit(dataset=train_set, cost=cost, optimizer=optimizer,
+              num_epochs=num_epochs, callbacks=callbacks)
+    end = time.time()
+    print "\tTime spend to organize: ", end - start, 'seconds'
+    print "\tTime spend to organize: ", (end - start) / 60.0, 'minutes\n'
+
+    # Saving
+
+    print "[BACK]: Saving the model with the name \"cnn-trained_model.prm\".\n\n"
+    model.save_params("cnn-trained_model-"+ str(directories_train) + "-" +
+                      str(const_size_image) + "-" +
+                      str(num_epochs) + ".prm")
+
+    return model
+
+
+def do_tests(directories_test, batch_min_size, const_size_image, model):
+
+    print "----------------------------------------------" \
+          "\n[INFO]: Starting the procedure of tests."
 
     # Create a list of figures from test dataset
     test_figures = loading_set_for_testing(directories_test)
 
     # Create a list of batches for test
-    l_batches_test = making_regions(test_figures, batch_size, const_size_image)
+    l_batches_test = making_regions(test_figures, batch_min_size, const_size_image)
 
     # Generate the inference lists for tests
-    test_set = generate_inference(l_batches_test, batch_size, const_size_image)
+    test_set = generate_inference(l_batches_test, batch_min_size, const_size_image)
 
     # Calcule the Miss classification error by framework
-    miss_test = False #or True  # todo retirar essa variavel e colocar no argumentos
+    miss_test = False or True  # todo retirar essa variavel e colocar no argumentos
     if miss_test:
         print "[INFO]: Checking the Miss classification of error."
         start = time.time()
@@ -176,19 +263,14 @@ def do_tests(directories_test, batch_size, const_size_image, model):
     return l_out, test_figures
 
 
-def loading_set_for_training(directories, const_size_image):
+def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_image):
     """
     Procedure to read dataset for training.
     :param directorys: directorys for read the images. It can backend more than one.
     :param const_size_image: Size of images to train
     :return: A lot of things
     """
-    print "[INFO]: Loading training FDDB"
 
-    # list of new figures and its informations
-    l_class_Figure = []
-    # Number of figures read
-    int_number_figures = 0
 
     # Calcule the time
     start = time.time()
@@ -202,189 +284,219 @@ def loading_set_for_training(directories, const_size_image):
     os.mkdir("./train/face/")
     os.mkdir("./train/non_face/")
 
-    # For each directory specified
-    for directory in directories:
+    print "[INFO]: Loading training FDDB data-set"
+    l_class_Figure_fddb = basic_functs.load_fddb(l_directories_fddb_train,
+                                                       const_size_image)
 
-        # Open the file of directories
-        file_features = open(directory, "r")
-
-        # Create a list of diretories
-        s_line = file_features.readline()
-
-        # Read them
-        while s_line != "":
-
-            # Instancie a new Class
-            l_class_Figure.append(Figura_Class())
-
-            # Read the s_path of np_image
-            l_class_Figure[int_number_figures].set_path(s_line[:len(s_line) - 1] + ".jpg")
-
-            # Load the np_image
-            l_class_Figure[int_number_figures].set_image(
-                basic_functs.load_image("./data_sets/originalPics/" +
-                                        l_class_Figure[int_number_figures].get_path()))
-
-            # basic_functs.show_img(l_class_Figure[int_number_figures].get_image())
+    l_np_faces_fddb = basic_functs.generate_faces_fddb(l_class_Figure_fddb, const_size_image)
+    l_np_non_faces_fddb = basic_functs.generate_non_faces_fddb(l_class_Figure_fddb, const_size_image)
 
 
-            # Verify if it np_image is colored
-            if len(l_class_Figure[int_number_figures].get_image().shape) == 3:
+    print "\tNumber of Faces:     ", len(l_np_faces_fddb)
+    print "\tNumber of Non-Faces: ", len(l_np_non_faces_fddb), "\n"
 
-                # Read quantity of faces
-                s_line = file_features.readline()
+    print "[INFO]: Loading training 94 data-set"
+    l_class_Figure_94, l_np_faces_94 = basic_functs.load_94_and_generate_faces(num_files_94, const_size_image)
 
-                int_number_faces = int(s_line)
+    print "\tNumber of Faces:     ", len(l_np_faces_94), "\n"
 
-                l_class_Figure[int_number_figures].set_number_faces(int_number_faces)
+    l_np_faces = np.concatenate((l_np_faces_fddb, l_np_faces_94))
+    l_np_non_faces = l_np_non_faces_fddb
 
-                # Read the informations of each face
-                for index_face in range(0, int_number_faces):
+    print "[INFO]: Images read successfully"
+    print "\tNumber of Faces:     ", len(l_np_faces)
+    print "\tNumber of Non-Faces: ", len(l_np_non_faces)
 
-                    # Read the line and cut everthing it is not necessary
+    arrayIterator_train_set = basic_functs.making_arrayIterator(l_np_faces, l_np_non_faces, const_size_image)
+
+    return arrayIterator_train_set
+
+    """
+
+        # For each directory specified
+        for directory in directories:
+
+            # Open the file of directories
+            file_features = open(directory, "r")
+
+            # Create a list of diretories
+            s_line = file_features.readline()
+
+            # Read them
+            while s_line != "":
+
+                # Instancie a new Class
+                l_class_Figure.append(Figura_Class())
+
+                # Read the s_path of np_image
+                l_class_Figure[int_number_figures].set_path(s_line[:len(s_line) - 1] + ".jpg")
+
+                # Load the np_image
+                l_class_Figure[int_number_figures].set_image(
+                    basic_functs.load_image("./data_sets/originalPics/" +
+                                            l_class_Figure[int_number_figures].get_path()))
+
+                # basic_functs.show_img(l_class_Figure[int_number_figures].get_image())
+
+
+                # Verify if it np_image is colored
+                if len(l_class_Figure[int_number_figures].get_image().shape) == 3:
+
+                    # Read quantity of faces
                     s_line = file_features.readline()
 
-                    # <major_axis_radius minor_axis_radius angle center_x center_y 1>.
-                    features_one_figure = s_line.split(" ")
+                    int_number_faces = int(s_line)
 
-                    features_one_figure_cut = \
-                        features_one_figure[:len(features_one_figure) - 2]
+                    l_class_Figure[int_number_figures].set_number_faces(int_number_faces)
 
-                    # Add the new face in object
-                    l_class_Figure[int_number_figures].add_face_position(
-                        features_one_figure_cut)
+                    # Read the informations of each face
+                    for index_face in range(0, int_number_faces):
 
-                # Count the figures
-                int_number_figures += 1
+                        # Read the line and cut everthing it is not necessary
+                        s_line = file_features.readline()
 
-                s_line = file_features.readline()
+                        # <major_axis_radius minor_axis_radius angle center_x center_y 1>.
+                        features_one_figure = s_line.split(" ")
 
-            # If the figure is black and white, delete it and pass to next.
-            else:
+                        features_one_figure_cut = \
+                            features_one_figure[:len(features_one_figure) - 2]
 
-                del l_class_Figure[int_number_figures]
+                        # Add the new face in object
+                        l_class_Figure[int_number_figures].add_face_position(
+                            features_one_figure_cut)
 
-                s_line = file_features.readline()
+                    # Count the figures
+                    int_number_figures += 1
 
-                for i in range(int(s_line) + 1):
                     s_line = file_features.readline()
 
-        # Close the actual file
-        file_features.close()
+                # If the figure is black and white, delete it and pass to next.
+                else:
 
-    # Create a list of faces and non_faces
-    l_np_faces = []
-    l_np_non_faces = []
+                    del l_class_Figure[int_number_figures]
 
-    # Calcule the time
-    end = time.time()
-    print "\tTime spend to organize: ", end - start, 'seconds', "\n"
+                    s_line = file_features.readline()
 
-    # Start tue cutting
+                    for i in range(int(s_line) + 1):
+                        s_line = file_features.readline()
 
-    print "[INFO]: Cutting the images, getting the faces and non-faces"
+            # Close the actual file
+            file_features.close()
 
-    start = time.time()
+        # Create a list of faces and non_faces
+        l_np_faces = []
+        l_np_non_faces = []
 
-    # For each np_image
-    for i in range(0, int_number_figures):
-        # Printe some informations
-        sys.stdout.write("\r\tProcessed: " + str(i + 1) + " of " +
-                         str(int_number_figures) +
-                         ". \tCompleted: " +
-                         str((i+1) / float(int_number_figures) * 100.0) + "%")
-        sys.stdout.flush()
+        # Calcule the time
+        end = time.time()
+        print "\tTime spend to organize: ", end - start, 'seconds', "\n"
 
-        #       0                 1             2       3        4
-        # <major_axis_radius minor_axis_radius angle center_x center_y>
+        # Start tue cutting
 
-        # Load the informations from this np_image i
-        features = l_class_Figure[i].get_face_positions()
-        np_img = l_class_Figure[i].get_image()
+        print "[INFO]: Cutting the images, getting the faces and non-faces"
 
-        # for each face in the np_image
-        for feature in features:
+        start = time.time()
 
-            # Convert the string to int
-            int_feature = [int(float(x)) for x in feature]
+        # For each np_image
+        for i in range(0, int_number_figures):
+            # Printe some informations
+            sys.stdout.write("\r\tProcessed: " + str(i + 1) + " of " +
+                             str(int_number_figures) +
+                             ". \tCompleted: " +
+                             str((i+1) / float(int_number_figures) * 100.0) + "%")
+            sys.stdout.flush()
 
-            # Verify if np_image pass the edge of np_image
-            if int_feature[4] + int_feature[0] > np_img.shape[0]:
-                int_feature[4] -= int_feature[4] + int_feature[0] - (np_img.shape[0] - 1)
+            #       0                 1             2       3        4
+            # <major_axis_radius minor_axis_radius angle center_x center_y>
 
-            if int_feature[3] + int_feature[0] > np_img.shape[1]:
-                int_feature[3] -= int_feature[3] + int_feature[0] - (np_img.shape[1] - 1)
+            # Load the informations from this np_image i
+            features = l_class_Figure[i].get_face_positions()
+            np_img = l_class_Figure[i].get_image()
 
-            # Verify if np_image pass the edge of np_image
-            if int_feature[4] - int_feature[0] < 0:
-                int_feature[4] += abs(int_feature[4] + int_feature[0])
+            # for each face in the np_image
+            for feature in features:
 
-            if int_feature[3] - int_feature[0] < 0:
-                int_feature[3] += abs(int_feature[3] + int_feature[0])
+                # Convert the string to int
+                int_feature = [int(float(x)) for x in feature]
 
-            # Calculate the interval where the face it is.
-            y = [int_feature[4] - int_feature[0], int_feature[4] + int_feature[0]]
-            x = [int_feature[3] - int_feature[0], int_feature[3] + int_feature[0]]
+                # Verify if np_image pass the edge of np_image
+                if int_feature[4] + int_feature[0] > np_img.shape[0]:
+                    int_feature[4] -= int_feature[4] + int_feature[0] - (np_img.shape[0] - 1)
 
-            # Cut
-            np_img_cut = basic_functs.cut_and_resize_img(x, y, np_img, const_size_image)
+                if int_feature[3] + int_feature[0] > np_img.shape[1]:
+                    int_feature[3] -= int_feature[3] + int_feature[0] - (np_img.shape[1] - 1)
 
-            # basic_functs.show_img(np_img_cut, const_size_image)
+                # Verify if np_image pass the edge of np_image
+                if int_feature[4] - int_feature[0] < 0:
+                    int_feature[4] += abs(int_feature[4] + int_feature[0])
 
-            basic_functs.save_image(np_img_cut, "./train/face/f" + str(i) + "-" +
-                                    str(randrange(1, stop=10000)) + ".jpg",
-                                    const_size_image, const_size_image)
+                if int_feature[3] - int_feature[0] < 0:
+                    int_feature[3] += abs(int_feature[3] + int_feature[0])
 
-            # Save the new face img
-            l_np_faces.append(np_img_cut)
+                # Calculate the interval where the face it is.
+                y = [int_feature[4] - int_feature[0], int_feature[4] + int_feature[0]]
+                x = [int_feature[3] - int_feature[0], int_feature[3] + int_feature[0]]
 
-            # Creating new images non-face for training:
-            for i in range(2):
-                #       0                 1             2       3        4
-                # <major_a xis_radius minor_axis_radius angle center_x center_y>
+                # Cut
+                np_img_cut = basic_functs.cut_and_resize_img(x, y, np_img, const_size_image)
 
-                shift_x = randrange(np_img.shape[1] - int_feature[0]) + int_feature[0]
-                shift_y = randrange(np_img.shape[0] - int_feature[0]) + int_feature[0]
+                # basic_functs.show_img(np_img_cut, const_size_image)
 
-                y_non_face = [shift_y - int_feature[0], shift_y + int_feature[0]]
-                x_non_face = [shift_x - int_feature[0], shift_x + int_feature[0]]
-
-                np_img_cut = basic_functs.cut_and_resize_img(x_non_face, y_non_face, np_img,
-                                                          const_size_image)
-
-                # basic_functs.show_img(img_cut)
-                basic_functs.save_image(np_img_cut, "./train/non_face/n" +
-                                        str(i) + "-" + str(randrange(1, stop=10000)) + ".jpg",
+                basic_functs.save_image(np_img_cut, "./train/face/f" + str(i) + "-" +
+                                        str(randrange(1, stop=10000)) + ".jpg",
                                         const_size_image, const_size_image)
 
-                # Save the new non_face np_image
-                l_np_non_faces.append(np_img_cut)
+                # Save the new face img
+                l_np_faces.append(np_img_cut)
 
-    print "\n\n[INFO]: Read and Cutting Faces and Non-Faces Done"
+                # Creating new images non-face for training:
+                for i in range(2):
+                    #       0                 1             2       3        4
+                    # <major_a xis_radius minor_axis_radius angle center_x center_y>
 
-    end = time.time()
-    print "\tTime spend to organize: ", end - start, 'seconds', "\n"
+                    shift_x = randrange(np_img.shape[1] - int_feature[0]) + int_feature[0]
+                    shift_y = randrange(np_img.shape[0] - int_feature[0]) + int_feature[0]
 
-    # Create a unique list with each np_image generate
-    np_data_set = np.concatenate((l_np_faces, l_np_non_faces))
-    np_data_set = np.asarray(np_data_set, dtype=np.uint8)
+                    y_non_face = [shift_y - int_feature[0], shift_y + int_feature[0]]
+                    x_non_face = [shift_x - int_feature[0], shift_x + int_feature[0]]
 
-    # Create the labels
-    np_label_set = np.concatenate(([1] * len(l_np_faces), [0] * len(l_np_faces) * 2))
+                    np_img_cut = basic_functs.cut_and_resize_img(x_non_face, y_non_face, np_img,
+                                                              const_size_image)
 
-    print "\tData_set size  (quant, size): ", np_data_set.shape
-    print "\tLabel_set size (quant,):      ", np_label_set.shape, "\n"
+                    # basic_functs.show_img(img_cut)
+                    basic_functs.save_image(np_img_cut, "./train/non_face/n" +
+                                            str(i) + "-" + str(randrange(1, stop=10000)) + ".jpg",
+                                            const_size_image, const_size_image)
 
-    print "[INFO]: Creating the ArrayIterator of training set"
+                    # Save the new non_face np_image
+                    l_np_non_faces.append(np_img_cut)
 
-    # Create the array iterator with informations
-    train_set = ArrayIterator(X=np_data_set,
-                              y=np_label_set, nclass=2, lshape=(3, const_size_image,
-                                                                const_size_image))
-    end = time.time()
-    print "\tTime spend to organize: ", end - start, 'seconds', "\n"
+        print "\n\n[INFO]: Read and Cutting Faces and Non-Faces Done"
 
-    return train_set, l_class_Figure
+        end = time.time()
+        print "\tTime spend to organize: ", end - start, 'seconds', "\n"
+
+        # Create a unique list with each np_image generate
+        np_data_set = np.concatenate((l_np_faces, l_np_non_faces))
+        np_data_set = np.asarray(np_data_set, dtype=np.uint8)
+
+        # Create the labels
+        np_label_set = np.concatenate(([1] * len(l_np_faces), [0] * len(l_np_faces) * 2))
+
+        print "\tData_set size  (quant, size): ", np_data_set.shape
+        print "\tLabel_set size (quant,):      ", np_label_set.shape, "\n"
+
+        print "[INFO]: Creating the ArrayIterator of training set"
+
+        # Create the array iterator with informations
+        train_set = ArrayIterator(X=np_data_set,
+                                  y=np_label_set, nclass=2, lshape=(3, const_size_image,
+                                                                    const_size_image))
+        end = time.time()
+        print "\tTime spend to organize: ", end - start, 'seconds', "\n"
+
+        return train_set, l_class_Figure
+    """
 
 
 def loading_set_for_testing(directories):
@@ -433,7 +545,7 @@ def loading_set_for_testing(directories):
     return l_class_Figure
 
 
-def making_regions(l_class_figure, batch_size, const_size_image):
+def making_regions(l_class_figure, batch_min_size, const_size_image):
     """
     Procedure that gets the figures test and create a lot of regions to do the tests
     :param l_class_figure: List of figures
@@ -462,8 +574,7 @@ def making_regions(l_class_figure, batch_size, const_size_image):
         #    print Figura_original.get_image().shape
 
         # Verify if the region respect the bound of the face
-        while bound < Figure_original.get_image().shape[0] or \
-                        bound < Figure_original.get_image().shape[1]:
+        while (bound < Figure_original.get_image().shape[0] or bound < Figure_original.get_image().shape[1]):
 
             # Move on the Y axis
             for edge_y_axis in range(bound, Figure_original.get_image().shape[0], interval):
@@ -488,21 +599,24 @@ def making_regions(l_class_figure, batch_size, const_size_image):
 
                     int_count_new_images += 1
 
-                    # if the batch of this np_image list complete, stop to create new regions
-                    if int_count_new_images >= batch_size:
-                        break
-
-                # if the batch of this np_image list complete, stop to create new regions
-                if int_count_new_images >= batch_size:
-                    break
 
             # if the batch of this np_image list complete, stop to create new regions
-            if int_count_new_images >= batch_size:
-                break
-
-            # if the batch of this np_image list complete, stop to create new regions
-            bound += 120
+            bound += 60
             interval = bound - bound / 4
+
+        while len(l_new_images) < batch_min_size:
+            np_img = Figure_original.get_image()
+
+            shift_x = randrange(np_img.shape[1] - const_size_image / 2) + const_size_image
+            shift_y = randrange(np_img.shape[0] - const_size_image / 2) + const_size_image
+
+            y_non_face = [shift_y - const_size_image, shift_y + const_size_image]
+            x_non_face = [shift_x - const_size_image, shift_x + const_size_image]
+
+            np_img_cut = basic_functs.cut_and_resize_img(x_non_face, y_non_face, np_img, const_size_image)
+
+            # Save the new non_face np_image
+            l_new_images.append(np.array(np_img_cut).reshape(-1))
 
         l_batch_np_images.append(l_new_images)
 
@@ -541,10 +655,11 @@ def generate_inference(batches, batch_size, const_size_image):
         sys.stdout.flush()
 
         # Create a new list empty
-        x_new = np.zeros((batch_size, const_size_image *
-                          const_size_image * 3), dtype=np.uint8)
+        #x_new = np.zeros((batch_size, const_size_image *
+        #                  const_size_image * 3), dtype=np.uint8)
 
-        print len(batch)
+        x_new = np.zeros((len(batch), const_size_image * const_size_image * 3), dtype=np.uint8)
+
         # Add the batch to the list
         x_new[0:len(batch)] = np.asarray(batch, dtype=np.uint8)
 
@@ -601,7 +716,7 @@ def test_inference(l_inferences, model):
 
 
 # TODO marcar a foto
-def mark_result(np_img, position):
+def mark_result(np_img, position, color):
     """
     Procedure that mark the result of process
     :param image: np_image to mark
@@ -622,10 +737,8 @@ def mark_result(np_img, position):
     np_img_marked.flags.writeable = True
 
     # mark the y axis
-    value = 255
+    value = color % 255
     for y in range(edge_y_axis - bound, edge_y_axis):
-        print edge_x_axis, edge_y_axis, bound, y
-
         np_img_marked[edge_x_axis, y, 0] = value
         np_img_marked[edge_x_axis - bound, y, 0] = value
 
@@ -647,6 +760,7 @@ def analyze_results(l_out, l_Figura_class):
     print "[INFO]: Analyzing the Results"
 
     index = 0
+    start = time.time()
 
     if os.path.exists("./out/"):
         shutil.rmtree("./out/")
@@ -658,10 +772,16 @@ def analyze_results(l_out, l_Figura_class):
     # Para cada batch de images 
     for batch in l_out:
 
+        random_color = range(12345)
+
         # para cada regiao
         num_region = 0
         image_marked = False
         for region in batch:
+            sys.stdout.write("\r\tProcessed: " + str(index + 1) + ":" + str(num_region+1) + " of " + str(len(l_out)) +
+                             ". \tCompleted: " + str(index + 1 / float(len(l_out)) * 100.0) +
+                             "%.\tTime spend until now: " + str(time.time() - start) + "s")
+            sys.stdout.flush()
             # se for encontrado algum rosto
 
             if region[0] > 0.5:
@@ -671,7 +791,7 @@ def analyze_results(l_out, l_Figura_class):
 
 
                 np_img_cut = mark_result(np_img,
-                               l_Figura_class[index].l_faces_positions[num_region])
+                               l_Figura_class[index].l_faces_positions[num_region], random_color)
 
                 l_Figura_class[index].set_image(np_img_cut)
 
@@ -687,6 +807,9 @@ def analyze_results(l_out, l_Figura_class):
 
 
         index += 1
+
+    end = time.time()
+    print "\n\tTime spend to generate the outputs: ", end - start, 'seconds', "\n"
 
 """
 #classes = ["airplane", "automobile", "bird", "cat", "deer", "dog", "frog",
