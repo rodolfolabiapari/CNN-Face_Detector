@@ -255,7 +255,7 @@ def generate_non_faces_fddb(l_class_Figure, size_image):
         sys.stdout.flush()
 
         # for each face in the np_image
-        for generations in range(0, 5):
+        for generations in range(0, 10):
 
             np_img = l_class_Figure[i].get_image()
 
@@ -289,53 +289,63 @@ def load_94_and_generate_faces(num_folders, size_image):
 
     l_np_faces = []
 
+    s_path = "./data_sets/faces94/"
 
-    l_folders = os.listdir("./data_sets/faces94/malestaff/")
+    l_up_folders = os.listdir(s_path)
 
-    if num_folders != 0:
-        if num_folders <= len(l_folders):
-            l_folders = l_folders[1:num_folders + 1]
+    l_up_folders = l_up_folders[1:]
+
+    for l_down_folders in l_up_folders:
+
+        l_image_folders = os.listdir(s_path + l_down_folders)
+
+        l_image_folders = l_image_folders[1:]
+
+        if num_folders != 0:
+            if num_folders <= len(l_image_folders):
+                l_image_folders = l_image_folders[1:num_folders + 1]
+            else:
+                l_image_folders = l_image_folders[1:len(l_image_folders)]
         else:
-            l_folders = l_folders[1:len(l_folders)]
-    else:
-        l_folders = l_folders[1:]
+            l_image_folders = l_image_folders[1:]
 
+        for folder in l_image_folders:
+            l_images_path = os.listdir(s_path + l_down_folders + "/" + folder + "/")
 
+            i = 0
+            for name_image in l_images_path:
 
-    for folder in l_folders:
-        l_images_path = os.listdir("./data_sets/faces94/malestaff/" + folder)
+                if ".gif" in name_image:
+                    break
 
-        i = 0
-        for name_image in l_images_path:
+                if name_image[0] != '.':
+                    # Instancie a new Class
+                    l_class_Figure.append(Figura_Class())
 
-            # Instancie a new Class
-            l_class_Figure.append(Figura_Class())
+                    # Read the s_path of np_image
+                    l_class_Figure[-1].set_path(s_path + l_down_folders + "/" + folder + "/" + name_image)
 
-            # Read the s_path of np_image
-            l_class_Figure[-1].set_path("./data_sets/faces94/malestaff/" + folder + "/" + name_image)
+                    # Load the np_image
+                    np_image = load_image(s_path + l_down_folders + "/" + folder + "/" + name_image)
 
-            # Load the np_image
-            np_image = load_image("./data_sets/faces94/malestaff/" + folder + "/" + name_image)
+                    np_image = np_image[15:185, 20:160, :]
 
+                    np_image = resize_img(np_image, size_image)
 
-            np_image = np_image[10:190, :, :]
+                    # show_img(np_image, size_image)
 
-            np_image = resize_img(np_image, size_image)
+                    save_image(np_image, "./train/face/" + folder + "-" +
+                               str(i) + "-" + str(randrange(1, stop=10000)) + ".jpg",
+                               size_image, size_image)
 
-            # show_img(np_image, size_image)
+                    l_class_Figure[-1].set_image(np_image)
 
-            save_image(np_image, "./train/face/" + folder + "-" +
-                                    str(i) + "-" + str(randrange(1, stop=10000)) + ".jpg",
-                       size_image, size_image)
+                    l_np_faces.append(np.array(np_image, dtype=np.uint8).reshape(-1))
 
-            l_class_Figure[-1].set_image(np_image)
+                    i += 1
 
-            l_np_faces.append(np.array(np_image, dtype=np.uint8).reshape(-1))
-
-            i += 1
-
-            if i == 20:
-                break
+                    if i == 20:
+                        break
 
     return l_class_Figure, l_np_faces
 

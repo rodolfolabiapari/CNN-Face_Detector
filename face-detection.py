@@ -59,15 +59,15 @@ import basic_functs
 import cnn_functs
 
 NUM_IMAGES_TRAINED = -1
-#CONST_batch_size = 4096          # The CONST_batch_size cannot backend bigger
+CONST_batch_size = 4096          # The CONST_batch_size cannot backend bigger
 # than amount images TODO DEVE SER AUTO
 # CONST_batch_size = 3084
 # CONST_batch_size = 2048
-CONST_batch_size = 1024
+#CONST_batch_size = 1024
 # CONST_batch_size = 512
 #CONST_batch_size = 90
-CONST_num_epochs = 4  # Passages on through the dataset
-CONST_size_image_algorithm = 60  # Size of training np_image
+CONST_num_epochs = 2  # Passages on through the dataset
+CONST_size_image_algorithm = 100  # Size of training np_image
 CONST_learning_rate = 0.005
 CONST_momentum = 0.9
 # CONST_train_again = basic_functs.verify_args()       # TODO arrumar o args
@@ -80,7 +80,6 @@ def main():
     # Start
     print "[INFO]: Library read."
     print "[SETU]: Setting the CPU."
-
 
     # Starting the procedures of configurations
 

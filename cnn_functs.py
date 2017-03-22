@@ -11,6 +11,7 @@ import time
 import numpy as np
 import basic_functs
 import sys
+import math
 from neon.data import ArrayIterator
 from neon.layers import Conv, Affine, Pooling, GeneralizedCost
 from neon.initializers import Uniform, Gaussian
@@ -89,19 +90,19 @@ def train_model_fddb_94(num_files_94, l_directories_fddb_train,  const_size_imag
     print "\tCreating a Convolutional Network.\n"
     init_uni = Uniform(low=-0.1, high=0.1)
 
-    layers = [Conv(fshape=(12, 12, 24),
+    layers = [Conv(fshape=(32, 32, 12),
                    init=init_uni,
                    activation=Rectlin(), padding=True),
 
               Pooling(fshape=2, strides=2),
 
-              Conv(fshape=(10, 10, 48),
+              Conv(fshape=(16, 16, 36),
                    init=init_uni,
                    activation=Rectlin(), padding=True),
 
               Pooling(fshape=2, strides=2),
 
-              Affine(nout=500,
+              Affine(nout=128,
                      init=init_uni,
                      bias=init_uni,
                      activation=Rectlin()),
@@ -248,7 +249,7 @@ def do_tests(directories_test, batch_min_size, const_size_image, model):
     test_set = generate_inference(l_batches_test, batch_min_size, const_size_image)
 
     # Calcule the Miss classification error by framework
-    miss_test = False or True  # todo retirar essa variavel e colocar no argumentos
+    miss_test = False #or True  # todo retirar essa variavel e colocar no argumentos
     if miss_test:
         print "[INFO]: Checking the Miss classification of error."
         start = time.time()
@@ -284,23 +285,30 @@ def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_
     os.mkdir("./train/face/")
     os.mkdir("./train/non_face/")
 
-    print "[INFO]: Loading training FDDB data-set"
-    l_class_Figure_fddb = basic_functs.load_fddb(l_directories_fddb_train,
-                                                       const_size_image)
-
-    l_np_faces_fddb = basic_functs.generate_faces_fddb(l_class_Figure_fddb, const_size_image)
-    l_np_non_faces_fddb = basic_functs.generate_non_faces_fddb(l_class_Figure_fddb, const_size_image)
-
-
-    print "\tNumber of Faces:     ", len(l_np_faces_fddb)
-    print "\tNumber of Non-Faces: ", len(l_np_non_faces_fddb), "\n"
+    # 94
 
     print "[INFO]: Loading training 94 data-set"
     l_class_Figure_94, l_np_faces_94 = basic_functs.load_94_and_generate_faces(num_files_94, const_size_image)
 
     print "\tNumber of Faces:     ", len(l_np_faces_94), "\n"
+    # FDDB
 
-    l_np_faces = np.concatenate((l_np_faces_fddb, l_np_faces_94))
+    print "[INFO]: Loading training FDDB data-set"
+    l_class_Figure_fddb = basic_functs.load_fddb(l_directories_fddb_train,
+                                                       const_size_image)
+
+    l_np_non_faces_fddb = basic_functs.generate_non_faces_fddb(l_class_Figure_fddb, const_size_image)
+
+    if True:
+        l_np_faces_fddb = basic_functs.generate_faces_fddb(l_class_Figure_fddb, const_size_image)
+        l_np_faces = np.concatenate((l_np_faces_fddb, l_np_faces_94))
+
+        print "\tNumber of Faces:     ", len(l_np_faces_fddb)
+    else:
+        l_np_faces = l_np_faces_94
+
+    print "\tNumber of Non-Faces: ", len(l_np_non_faces_fddb), "\n"
+
     l_np_non_faces = l_np_non_faces_fddb
 
     print "[INFO]: Images read successfully"
@@ -716,7 +724,7 @@ def test_inference(l_inferences, model):
 
 
 # TODO marcar a foto
-def mark_result(np_img, position, color):
+def mark_result(np_img, position):
     """
     Procedure that mark the result of process
     :param image: np_image to mark
@@ -737,10 +745,12 @@ def mark_result(np_img, position, color):
     np_img_marked.flags.writeable = True
 
     # mark the y axis
-    value = color % 255
+    value = 255
     for y in range(edge_y_axis - bound, edge_y_axis):
         np_img_marked[edge_x_axis, y, 0] = value
         np_img_marked[edge_x_axis - bound, y, 0] = value
+        np_img_marked[edge_x_axis, y+1, 0] = value
+        np_img_marked[edge_x_axis - bound, y+1, 0] = value
 
         np_img_marked[edge_x_axis, y, 1:2] = 0
         np_img_marked[edge_x_axis - bound, y, 1:2] = 0
@@ -749,6 +759,8 @@ def mark_result(np_img, position, color):
     for x in range(edge_x_axis - bound, edge_x_axis):
         np_img_marked[x, edge_y_axis, 0] = value
         np_img_marked[x, edge_y_axis - bound, 0] = value
+        np_img_marked[x+1, edge_y_axis, 0] = value
+        np_img_marked[x+1, edge_y_axis - bound, 0] = value
 
         np_img_marked[x, edge_y_axis, 1:2] = 0
         np_img_marked[x, edge_y_axis - bound, 1:2] = 0
@@ -772,26 +784,25 @@ def analyze_results(l_out, l_Figura_class):
     # Para cada batch de images 
     for batch in l_out:
 
-        random_color = range(12345)
-
         # para cada regiao
         num_region = 0
         image_marked = False
         for region in batch:
-            sys.stdout.write("\r\tProcessed: " + str(index + 1) + ":" + str(num_region+1) + " of " + str(len(l_out)) +
-                             ". \tCompleted: " + str(index + 1 / float(len(l_out)) * 100.0) +
-                             "%.\tTime spend until now: " + str(time.time() - start) + "s")
-            sys.stdout.flush()
+            #sys.stdout.write("\r\tProcessed: " + str(index + 1) + ":" + str(num_region+1) + " of " + str(len(l_out)) +
+            #                 ". \tCompleted: " + str(index + 1 / float(len(l_out)) * 100.0) +
+            #                 "%.\tTime spend until now: " + str(time.time() - start) + "s")
+            #sys.stdout.flush()
             # se for encontrado algum rosto
 
             if region[0] > 0.5:
+                print "Face Detectada: ", region
                 image_marked = True
 
                 np_img = l_Figura_class[index].get_image()
 
 
                 np_img_cut = mark_result(np_img,
-                               l_Figura_class[index].l_faces_positions[num_region], random_color)
+                               l_Figura_class[index].l_faces_positions[num_region])
 
                 l_Figura_class[index].set_image(np_img_cut)
 
