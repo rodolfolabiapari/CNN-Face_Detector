@@ -1,3 +1,37 @@
+
+from settings import *
+
+import time
+from neon.backends import gen_backend
+import os.path
+import sys
+from neon.transforms import Misclassification
+from neon.models import Model
+
+import urllib                    # download the np_image
+from PIL import Image            # crop and resize to 32x32
+import numpy as np               # Work with vectors and matrices
+import basic_functs
+# Search files on path
+import os.path
+#
+import sys
+import os
+import shutil
+
+from neon.data import CIFAR10, ArrayIterator
+from random import randrange
+import numpy as np
+import sys
+import math
+from neon.data import ArrayIterator
+from neon.layers import Conv, Affine, Pooling, GeneralizedCost
+from neon.initializers import Uniform, Gaussian
+from neon.transforms.activation import Rectlin, Softmax
+from neon.transforms import CrossEntropyMulti, CrossEntropyBinary, Misclassification
+from neon.models import Model
+from neon.optimizers import GradientDescentMomentum, RMSProp
+from neon.callbacks.callbacks import Callbacks
 # Search files on path
 import os.path
 #
@@ -6,52 +40,26 @@ import cPickle
 
 # crop and resize to 32x32
 from PIL import Image
-import time
 import numpy as np
 from random import randrange
 from neon.data import ArrayIterator
 
-class Figura_Class:
-    """
-    Class that save the informations of a np_image
-    """
-    description = "<major_axis_radius minor_axis_radius angle center_x center_y>"
 
-    def __init__(self, path="", number_faces=0):
-        self.s_path = path
-        self.int_number_faces = number_faces
-        self.l_faces_positions = []
-        self.np_image = []
+def save_results(l_out):
+    print "[INFO]: Saving the Output"
+    f = open("./out/l_out.txt", "w+")
 
-    def get_path(self):
-        return self.s_path
+    i = 0
+    for batch in l_out:
+        f.write(str(i) + "\n")
+        for region in batch:
+            f.write("\t" + str(region) + "\n")
 
-    def set_path(self, path):
-        self.s_path = path
+        f.write("\n")
 
-    # Nun_Faces
+        i += 1
 
-    def get_number_faces(self):
-        return self.int_number_faces
-
-    def set_number_faces(self, number_faces):
-        self.int_number_faces = number_faces
-
-    # Image
-
-    def get_image(self):
-        return self.np_image
-
-    def set_image(self, image):
-        self.np_image = image
-
-    # Face
-
-    def add_face_position(self, vector):
-        self.l_faces_positions.append(vector)
-
-    def get_face_positions(self):
-        return self.l_faces_positions
+    f.close()
 
 
 def making_arrayIterator(l_np_faces, l_np_non_faces, const_size_image):
@@ -73,10 +81,9 @@ def making_arrayIterator(l_np_faces, l_np_non_faces, const_size_image):
 
     print "[INFO]: Creating the ArrayIterator of training set"
 
-    # Create the array iterator with informations
-    train_set = ArrayIterator(X=np_data_set,
-                              y=np_label_set, nclass=2, lshape=(3, const_size_image,
-                                                                const_size_image))
+    # Create the array iterator with information
+    train_set = ArrayIterator(X=np_data_set, y=np_label_set, nclass=2, lshape=(1, const_size_image, const_size_image))
+
     end = time.time()
     print "\tTime spend to organize: ", end - start, 'seconds', "\n"
 
@@ -115,42 +122,29 @@ def load_fddb(directories, size_image):
 
             # basic_functs.show_img(l_class_Figure[-1].get_image())
 
-            # Verify if it np_image is colored
-            if len(l_class_Figure[-1].get_image().shape) == 3:
+            # Read quantity of faces
+            s_line = file_features.readline()
 
-                # Read quantity of faces
+            int_number_faces = int(s_line)
+
+            l_class_Figure[-1].set_number_faces(int_number_faces)
+
+            # Read the informations of each face
+            for index_face in range(0, int_number_faces):
+                # Read the line and cut everthing it is not necessary
                 s_line = file_features.readline()
 
-                int_number_faces = int(s_line)
+                # <major_axis_radius minor_axis_radius angle center_x center_y 1>.
+                features_one_figure = s_line.split(" ")
 
-                l_class_Figure[-1].set_number_faces(int_number_faces)
+                features_one_figure_cut = \
+                    features_one_figure[:len(features_one_figure) - 2]
 
-                # Read the informations of each face
-                for index_face in range(0, int_number_faces):
-                    # Read the line and cut everthing it is not necessary
-                    s_line = file_features.readline()
+                # Add the new face in object
+                l_class_Figure[-1].add_face_position(
+                    features_one_figure_cut)
 
-                    # <major_axis_radius minor_axis_radius angle center_x center_y 1>.
-                    features_one_figure = s_line.split(" ")
-
-                    features_one_figure_cut = \
-                        features_one_figure[:len(features_one_figure) - 2]
-
-                    # Add the new face in object
-                    l_class_Figure[-1].add_face_position(
-                        features_one_figure_cut)
-
-                s_line = file_features.readline()
-
-            # If the figure is black and white, delete it and pass to next.
-            else:
-
-                del l_class_Figure[-1]
-
-                s_line = file_features.readline()
-
-                for i in range(int(s_line) + 1):
-                    s_line = file_features.readline()
+            s_line = file_features.readline()
 
         # Close the actual file
         file_features.close()
@@ -168,23 +162,22 @@ def generate_faces_fddb(l_class_Figure, size_image):
 
     # Start tue cutting
 
-    print "[INFO]: Cutting the images, getting the faces and non-faces"
+    print "[INFO]: Cutting the images, getting the faces"
 
     start = time.time()
 
     # For each np_image
     for i in range(0, len(l_class_Figure)):
         # Printe some informations
-        sys.stdout.write("\r\tProcessed: " + str(i + 1) + " of " +
-                         str(len(l_class_Figure)) +
-                         ". \tCompleted: " +
+        sys.stdout.write("\r\tProcessed: " + str(i + 1) + " of " + str(len(l_class_Figure)) + ". \tCompleted: " +
                          str((i + 1) / float(len(l_class_Figure)) * 100.0) + "%")
+
         sys.stdout.flush()
 
         #       0                 1             2       3        4
         # <major_axis_radius minor_axis_radius angle center_x center_y>
 
-        # Load the informations from this np_image i
+        # Load the information from this np_image i
         features = l_class_Figure[i].get_face_positions()
         np_img = l_class_Figure[i].get_image()
 
@@ -265,13 +258,10 @@ def generate_non_faces_fddb(l_class_Figure, size_image):
             y_non_face = [shift_y - size_image, shift_y + size_image]
             x_non_face = [shift_x - size_image, shift_x + size_image]
 
-            np_img_cut = cut_and_resize_img(x_non_face, y_non_face, np_img,
-                                            size_image)
+            np_img_cut = cut_and_resize_img(x_non_face, y_non_face, np_img, size_image)
 
             # basic_functs.show_img(img_cut)
-            save_image(np_img_cut, "./train/non_face/n" +
-                                    str(i) + "-" + str(generations) + ".jpg",
-                       size_image, size_image)
+            save_image(np_img_cut, "./train/non_face/n" + str(i) + "-" + str(generations) + ".jpg", size_image, size_image)
 
             # Save the new non_face np_image
             l_np_non_faces.append(np_img_cut)
@@ -328,15 +318,13 @@ def load_94_and_generate_faces(num_folders, size_image):
                     # Load the np_image
                     np_image = load_image(s_path + l_down_folders + "/" + folder + "/" + name_image)
 
-                    np_image = np_image[15:185, 20:160, :]
+                    np_image = np_image[15:185, 20:160]
 
                     np_image = resize_img(np_image, size_image)
 
                     # show_img(np_image, size_image)
 
-                    save_image(np_image, "./train/face/" + folder + "-" +
-                               str(i) + "-" + str(randrange(1, stop=10000)) + ".jpg",
-                               size_image, size_image)
+                    save_image(np_image, "./train/face/" + folder + "-" + str(i) + "-" + str(randrange(1, stop=10000)) + ".jpg", size_image, size_image)
 
                     l_class_Figure[-1].set_image(np_image)
 
@@ -369,17 +357,18 @@ def show_img(np_img, x=None, y=None):
         np_img = img
     """
 
+
     # Verify if it is a vector or a matrix
     if len(np_img.shape) == 1:
         # If it is a vector, reshape to a matrix
-        img_reshaped = np_img.reshape((x, y, 3))
+        img_reshaped = np_img.reshape((x, y))
     else:
         img_reshaped = np_img
 
     print img_reshaped.shape
 
     # Convert the numpy to a Image
-    img_out = Image.fromarray(np.asarray(img_reshaped, dtype=np.uint8), "RGB")
+    img_out = Image.fromarray(np.asarray(img_reshaped, dtype=np.uint8), "L")
 
     # Do the show
     img_out.show()
@@ -402,10 +391,10 @@ def cut_and_resize_img(x, y, img_original, size_image):
 
     # Cut the np_image
     # matrix_cropped = img[y_range][:, x_range][:]
-    matrix_cropped = img[y[0]: y[1], x[0]: x[1], :]
+    matrix_cropped = img[y[0]: y[1], x[0]: x[1]]
 
     # Transform to a Image Object
-    img_thumbnail = Image.fromarray(np.asarray(matrix_cropped, dtype=np.uint8), "RGB")
+    img_thumbnail = Image.fromarray(np.asarray(matrix_cropped, dtype=np.uint8), "L")
 
     # Resize the np_image
     img_thumbnail = img_thumbnail.resize((size_image, size_image), Image.ANTIALIAS)
@@ -422,8 +411,7 @@ def resize_img(img, size_image):
     :return:
     """
 
-    # Convert to a Image Object
-    new_img = Image.fromarray(img, 'RGB')
+    new_img = Image.fromarray(img, "L")
 
     # Resize it
     crop_img = new_img.resize((size_image, size_image), Image.ANTIALIAS)
@@ -450,8 +438,9 @@ def load_image(directory):
     :param directory: Directory to np_image
     :return: np_image in format numpy
     """
-    img_loading = Image.open(directory)
+    img_loading = Image.open(directory).convert('L')
     img_loading.load()
+
     return np.asarray(img_loading, dtype=np.uint8)
 
 
@@ -478,13 +467,14 @@ def save_image(np_img, directory, lin=None, col=None):
             print "ERROR, Defina o valor lin ou col"
             sys.exit(88)
 
-        img_reshaped = np_img.reshape((lin, col, 3))
+        img_reshaped = np_img.reshape((lin, col))
 
     else:
         img_reshaped = np_img
 
     # Save the np_image
-    img_out = Image.fromarray(np.asarray(img_reshaped, dtype=np.uint8), "RGB")
+    img_out = Image.fromarray(np.asarray(img_reshaped, dtype=np.uint8), "L")
+
     img_out.save(directory)
 
 

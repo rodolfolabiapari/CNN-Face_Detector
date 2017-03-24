@@ -1,15 +1,28 @@
+
+from settings import *
+
+import time
+import os.path
+
+from neon.backends import gen_backend
+import os.path
+import sys
+from neon.transforms import Misclassification
+from neon.models import Model
+
+import urllib                    # download the np_image
+from PIL import Image            # crop and resize to 32x32
+import numpy as np               # Work with vectors and matrices
+import basic_functs
 # Search files on path
 import os.path
 #
 import sys
 import os
 import shutil
-
 from neon.data import CIFAR10, ArrayIterator
 from random import randrange
-import time
 import numpy as np
-import basic_functs
 import sys
 import math
 from neon.data import ArrayIterator
@@ -20,50 +33,17 @@ from neon.transforms import CrossEntropyMulti, CrossEntropyBinary, Misclassifica
 from neon.models import Model
 from neon.optimizers import GradientDescentMomentum, RMSProp
 from neon.callbacks.callbacks import Callbacks
+# Search files on path
+import os.path
+#
+import sys
+import cPickle
 
-
-class Figura_Class:
-    """
-    Class that save the informations of a np_image
-    """
-    description = "<major_axis_radius minor_axis_radius angle center_x center_y>"
-
-    def __init__(self, path="", number_faces=0):
-        self.s_path = path
-        self.int_number_faces = number_faces
-        self.l_faces_positions = []
-        self.np_image = []
-
-    def get_path(self):
-        return self.s_path
-
-    def set_path(self, path):
-        self.s_path = path
-
-    # Nun_Faces
-
-    def get_number_faces(self):
-        return self.int_number_faces
-
-    def set_number_faces(self, number_faces):
-        self.int_number_faces = number_faces
-
-    # Image
-
-    def get_image(self):
-        return self.np_image
-
-    def set_image(self, image):
-        self.np_image = image
-
-    # Face
-
-    def add_face_position(self, vector):
-        self.l_faces_positions.append(vector)
-
-    def get_face_positions(self):
-        return self.l_faces_positions
-
+# crop and resize to 32x32
+from PIL import Image
+import numpy as np
+from random import randrange
+from neon.data import ArrayIterator
 
 
 def train_model_fddb_94(num_files_94, l_directories_fddb_train,  const_size_image, num_epochs, learning_rate, momentum):
@@ -90,19 +70,19 @@ def train_model_fddb_94(num_files_94, l_directories_fddb_train,  const_size_imag
     print "\tCreating a Convolutional Network.\n"
     init_uni = Uniform(low=-0.1, high=0.1)
 
-    layers = [Conv(fshape=(32, 32, 12),
+    layers = [Conv(fshape=(5, 5, 4),
                    init=init_uni,
                    activation=Rectlin(), padding=True),
 
               Pooling(fshape=2, strides=2),
 
-              Conv(fshape=(16, 16, 36),
+              Conv(fshape=(3, 3, 14),
                    init=init_uni,
                    activation=Rectlin(), padding=True),
 
               Pooling(fshape=2, strides=2),
 
-              Affine(nout=128,
+              Affine(nout=14,
                      init=init_uni,
                      bias=init_uni,
                      activation=Rectlin()),
@@ -143,7 +123,7 @@ def train_model_fddb_94(num_files_94, l_directories_fddb_train,  const_size_imag
     # Saving
 
     print "[BACK]: Saving the model with the name \"cnn-trained_model.prm\".\n\n"
-    model.save_params("cnn-trained_model-"+ str(num_files_94) + "-" + str(len(l_directories_fddb_train)) + "-" +
+    model.save_params("./cnn/cnn-trained_model-"+ str(num_files_94) + "-" + str(len(l_directories_fddb_train)) + "-" +
                       str(const_size_image) + "-" +
                       str(num_epochs) + ".prm")
 
@@ -249,7 +229,7 @@ def do_tests(directories_test, batch_min_size, const_size_image, model):
     test_set = generate_inference(l_batches_test, batch_min_size, const_size_image)
 
     # Calcule the Miss classification error by framework
-    miss_test = False #or True  # todo retirar essa variavel e colocar no argumentos
+    miss_test = False or True  # todo retirar essa variavel e colocar no argumentos
     if miss_test:
         print "[INFO]: Checking the Miss classification of error."
         start = time.time()
@@ -272,7 +252,6 @@ def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_
     :return: A lot of things
     """
 
-
     # Calcule the time
     start = time.time()
 
@@ -288,24 +267,20 @@ def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_
     # 94
 
     print "[INFO]: Loading training 94 data-set"
-    l_class_Figure_94, l_np_faces_94 = basic_functs.load_94_and_generate_faces(num_files_94, const_size_image)
+    l_class_figure_94, l_np_faces_94 = basic_functs.load_94_and_generate_faces(num_files_94, const_size_image)
 
     print "\tNumber of Faces:     ", len(l_np_faces_94), "\n"
     # FDDB
 
     print "[INFO]: Loading training FDDB data-set"
-    l_class_Figure_fddb = basic_functs.load_fddb(l_directories_fddb_train,
-                                                       const_size_image)
+    l_class_figure_fddb = basic_functs.load_fddb(l_directories_fddb_train, const_size_image)
 
-    l_np_non_faces_fddb = basic_functs.generate_non_faces_fddb(l_class_Figure_fddb, const_size_image)
+    l_np_faces_fddb = basic_functs.generate_faces_fddb(l_class_figure_fddb, const_size_image)
 
-    if True:
-        l_np_faces_fddb = basic_functs.generate_faces_fddb(l_class_Figure_fddb, const_size_image)
-        l_np_faces = np.concatenate((l_np_faces_fddb, l_np_faces_94))
+    l_np_non_faces_fddb = basic_functs.generate_non_faces_fddb(l_class_figure_fddb, const_size_image)
+    l_np_faces = np.concatenate((l_np_faces_fddb, l_np_faces_94))
 
-        print "\tNumber of Faces:     ", len(l_np_faces_fddb)
-    else:
-        l_np_faces = l_np_faces_94
+    print "\tNumber of Faces:     ", len(l_np_faces_fddb)
 
     print "\tNumber of Non-Faces: ", len(l_np_non_faces_fddb), "\n"
 
@@ -536,12 +511,7 @@ def loading_set_for_testing(directories):
             l_class_Figure[-1].set_path(s_line[:len(s_line) - 1] + ".jpg")
 
             # Save the np_image
-            l_class_Figure[-1].set_image(basic_functs.load_image("./data_sets/originalPics/" +
-                                                                l_class_Figure[-1].get_path()))
-
-            # If the np_image are black and white, delete it and jump to next
-            if len(l_class_Figure[-1].get_image().shape) == 2:
-                del l_class_Figure[-1]
+            l_class_Figure[-1].set_image(basic_functs.load_image("./data_sets/originalPics/" + l_class_Figure[-1].get_path()))
 
             s_line = f_paths.readline()
 
@@ -593,7 +563,7 @@ def making_regions(l_class_figure, batch_min_size, const_size_image):
 
                     # Crop the new np_image
                     crop_np_img = Figure_original.get_image()[edge_y_axis - bound: edge_y_axis
-                               ][:, edge_x_axis - bound: edge_x_axis][:]
+                               ][:, edge_x_axis - bound: edge_x_axis]
 
                     # Verify if the np_image is little than the bound of algorithm
                     if bound > const_size_image:
@@ -666,14 +636,14 @@ def generate_inference(batches, batch_size, const_size_image):
         #x_new = np.zeros((batch_size, const_size_image *
         #                  const_size_image * 3), dtype=np.uint8)
 
-        x_new = np.zeros((len(batch), const_size_image * const_size_image * 3), dtype=np.uint8)
+        x_new = np.zeros((len(batch), const_size_image * const_size_image), dtype=np.uint8)
+
 
         # Add the batch to the list
         x_new[0:len(batch)] = np.asarray(batch, dtype=np.uint8)
 
         # Create the array iterator from the new list
-        inference_out = ArrayIterator(X=x_new, y=None, nclass=2,
-                                      lshape=(3, const_size_image, const_size_image))
+        inference_out = ArrayIterator(X=x_new, y=None, nclass=2, lshape=(1, const_size_image, const_size_image))
 
         # Save in a list
         l_inferences.append(inference_out)
@@ -747,23 +717,17 @@ def mark_result(np_img, position):
     # mark the y axis
     value = 255
     for y in range(edge_y_axis - bound, edge_y_axis):
-        np_img_marked[edge_x_axis, y, 0] = value
-        np_img_marked[edge_x_axis - bound, y, 0] = value
-        np_img_marked[edge_x_axis, y+1, 0] = value
-        np_img_marked[edge_x_axis - bound, y+1, 0] = value
-
-        np_img_marked[edge_x_axis, y, 1:2] = 0
-        np_img_marked[edge_x_axis - bound, y, 1:2] = 0
+        np_img_marked[edge_x_axis, y] = value
+        np_img_marked[edge_x_axis - bound, y] = value
+        np_img_marked[edge_x_axis, y+1] = value
+        np_img_marked[edge_x_axis - bound, y+1] = value
 
     # Mark the x axis
     for x in range(edge_x_axis - bound, edge_x_axis):
-        np_img_marked[x, edge_y_axis, 0] = value
-        np_img_marked[x, edge_y_axis - bound, 0] = value
-        np_img_marked[x+1, edge_y_axis, 0] = value
-        np_img_marked[x+1, edge_y_axis - bound, 0] = value
-
-        np_img_marked[x, edge_y_axis, 1:2] = 0
-        np_img_marked[x, edge_y_axis - bound, 1:2] = 0
+        np_img_marked[x, edge_y_axis] = value
+        np_img_marked[x, edge_y_axis - bound] = value
+        np_img_marked[x+1, edge_y_axis] = value
+        np_img_marked[x+1, edge_y_axis - bound] = value
 
     return np_img_marked
 
@@ -780,6 +744,8 @@ def analyze_results(l_out, l_Figura_class):
     os.mkdir("./out/")
     os.mkdir("./out/f/")
     os.mkdir("./out/n/")
+
+    basic_functs.save_results(l_out)
 
     # Para cada batch de images 
     for batch in l_out:
@@ -799,7 +765,6 @@ def analyze_results(l_out, l_Figura_class):
                 image_marked = True
 
                 np_img = l_Figura_class[index].get_image()
-
 
                 np_img_cut = mark_result(np_img,
                                l_Figura_class[index].l_faces_positions[num_region])
