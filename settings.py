@@ -53,10 +53,10 @@ NUM_IMAGES_TRAINED = -1
 CONST_batch_size = 512
 #CONST_batch_size = 64
 CONST_num_epochs = 1000  # Passages on through the dataset
-CONST_size_image_algorithm = 50  # Size of training np_image
-CONST_learning_rate = 0.05
+CONST_size_image_algorithm = 36  # Size of training np_image
+CONST_learning_rate = 0.01
 CONST_momentum = 0.9
 # CONST_train_again = basic_functs.verify_args()       # TODO arrumar o args
-CONST_train_again = "n"
+CONST_train_again = "y"
 # TODO
-num_files_94 = 5
+num_files_94 = 0

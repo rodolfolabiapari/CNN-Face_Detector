@@ -41,9 +41,8 @@ import cPickle
 # crop and resize to 32x32
 from PIL import Image
 import numpy as np
-from random import randrange
+from random import randrange, shuffle
 from neon.data import ArrayIterator
-
 
 def save_results(l_out):
     print "[INFO]: Saving the Output"
@@ -53,13 +52,65 @@ def save_results(l_out):
     for batch in l_out:
         f.write(str(i) + "\n")
         for region in batch:
-            f.write("\t" + str(region) + "\n")
+            f.write("\t [ {:.4e}".format(region[0]))
+            if (region[0] > 0.5):
+                f.write(" >>>>> ")
+            else:
+                f.write("       ")
+            f.write("{:.4e} ]".format(region[1]))
+            f.write("\n")
 
         f.write("\n")
 
         i += 1
 
     f.close()
+
+
+def load_image(directory):
+    """
+    Function to read a unique np_image from directory
+    :param directory: Directory to np_image
+    :return: np_image in format numpy
+    """
+    img_loading = Image.open(directory).convert('L')
+    img_loading.load()
+
+    return np.asarray(img_loading, dtype=np.uint8)
+
+
+def save_image(np_img, directory, lin=None, col=None):
+    """
+    Save a np_image in a specific directory
+    :param img: the np_image
+    :param directory: the directory
+    :param lin: rows of np_image
+    :param col: columns of np_image
+    """
+
+    """
+    # Convert the img to a numpy
+    if "numpy" not in str(type(img)):
+        np_img = np.array(img)
+    else:
+        np_img = img
+    """
+
+    # Verify if it np_image is on the correct shape
+    if len(np_img.shape) == 1:
+        if lin == None:
+            print "ERROR, Defina o valor lin ou col"
+            sys.exit(88)
+
+        img_reshaped = np_img.reshape((lin, col))
+
+    else:
+        img_reshaped = np_img
+
+    # Save the np_image
+    img_out = Image.fromarray(np.asarray(img_reshaped, dtype=np.uint8), "L")
+
+    img_out.save(directory)
 
 
 def making_arrayIterator(l_np_faces, l_np_non_faces, const_size_image):
@@ -71,7 +122,7 @@ def making_arrayIterator(l_np_faces, l_np_non_faces, const_size_image):
     np_data_set = np.asarray(np_data_set, dtype=np.uint8)
 
     # Create the labels
-    np_label_set = np.concatenate(([1] * len(l_np_faces), [0] * len(l_np_non_faces)))
+    np_label_set = np.concatenate(([0] * len(l_np_faces), [1] * len(l_np_non_faces)))
 
     print "\n\tData_set size  (quant, size): ", np_data_set.shape
     print "\tLabel_set size (quant,):      ", np_label_set.shape, "\n"
@@ -211,7 +262,7 @@ def generate_faces_fddb(l_class_Figure, size_image):
 
             # basic_functs.show_img(np_img_cut, const_size_image)
 
-            save_image(np_img_cut, "./train/face/f" + str(i) + "-" +
+            save_image(np_img_cut, "./train/face/z" + str(i) + "-" +
                                     str(j) + ".jpg",
                                     size_image, size_image)
 
@@ -247,24 +298,55 @@ def generate_non_faces_fddb(l_class_Figure, size_image):
                          str((i + 1) / float(len(l_class_Figure)) * 100.0) + "%")
         sys.stdout.flush()
 
-        # for each face in the np_image
-        for generations in range(0, 10):
+        features = l_class_Figure[i].get_face_positions()
 
-            np_img = l_class_Figure[i].get_image()
+        int_features = []
 
-            shift_x = randrange(np_img.shape[1] - size_image / 2) + size_image
-            shift_y = randrange(np_img.shape[0] - size_image / 2) + size_image
+        # Convert the string to int
+        for feat in features:
+            int_features.append([int(float(x)) for x in feat])
 
-            y_non_face = [shift_y - size_image, shift_y + size_image]
-            x_non_face = [shift_x - size_image, shift_x + size_image]
+        np_img = l_class_Figure[i].get_image()
 
-            np_img_cut = cut_and_resize_img(x_non_face, y_non_face, np_img, size_image)
+        if np_img.shape[1] - int_features[0][0] > int_features[0][0] + 90 and np_img.shape[0] - int_features[0][0] > int_features[0][0] + 90 and len(int_features) < 3:
 
-            # basic_functs.show_img(img_cut)
-            save_image(np_img_cut, "./train/non_face/n" + str(i) + "-" + str(generations) + ".jpg", size_image, size_image)
+            # for each face in the np_image
+            for generations in range(0, 16):
 
-            # Save the new non_face np_image
-            l_np_non_faces.append(np_img_cut)
+                flag_igual_face_x = True
+                flag_igual_face_y = True
+
+                while flag_igual_face_x or flag_igual_face_y:
+                    # shift_x = randrange(np_img.shape[1] - size_image / 2) + size_image
+                    # shift_y = randrange(np_img.shape[0] - size_image / 2) + size_image
+
+                    if flag_igual_face_x:
+                        shift_x = randrange(np_img.shape[1] - size_image / 2) + size_image / 2
+                        flag_igual_face_x = False
+
+                    if flag_igual_face_y:
+                        shift_y = randrange(np_img.shape[0] - size_image / 2) + size_image / 2
+                        flag_igual_face_y = False
+
+                    for int_feat in int_features:
+                        if not flag_igual_face_x and abs(shift_x - int_feat[3]) < int_feat[0] * 0.7:
+                            flag_igual_face_x = True
+
+                        if not flag_igual_face_y and abs(shift_y - int_feat[4]) < int_feat[0] * 0.7:
+                            flag_igual_face_y = True
+
+                y_non_face = [shift_y - size_image, shift_y + size_image]
+                x_non_face = [shift_x - size_image, shift_x + size_image]
+
+                np_img_cut = cut_and_resize_img(x_non_face, y_non_face, np_img, size_image)
+
+
+                # basic_functs.show_img(img_cut)
+                save_image(np_img_cut, "./train/non_face/z" + str(i) + "-" + str(generations) + ".jpg", size_image,
+                           size_image)
+
+                # Save the new non_face np_image
+                l_np_non_faces.append(np_img_cut)
 
     # Calcule the time
     end = time.time()
@@ -275,7 +357,7 @@ def generate_non_faces_fddb(l_class_Figure, size_image):
 
 def load_94_and_generate_faces(num_folders, size_image):
 
-    l_class_Figure = []
+    l_class_figure = []
 
     l_np_faces = []
 
@@ -310,10 +392,10 @@ def load_94_and_generate_faces(num_folders, size_image):
 
                 if name_image[0] != '.':
                     # Instancie a new Class
-                    l_class_Figure.append(Figura_Class())
+                    l_class_figure.append(Figura_Class())
 
                     # Read the s_path of np_image
-                    l_class_Figure[-1].set_path(s_path + l_down_folders + "/" + folder + "/" + name_image)
+                    l_class_figure[-1].set_path(s_path + l_down_folders + "/" + folder + "/" + name_image)
 
                     # Load the np_image
                     np_image = load_image(s_path + l_down_folders + "/" + folder + "/" + name_image)
@@ -326,7 +408,7 @@ def load_94_and_generate_faces(num_folders, size_image):
 
                     save_image(np_image, "./train/face/" + folder + "-" + str(i) + "-" + str(randrange(1, stop=10000)) + ".jpg", size_image, size_image)
 
-                    l_class_Figure[-1].set_image(np_image)
+                    l_class_figure[-1].set_image(np_image)
 
                     l_np_faces.append(np.array(np_image, dtype=np.uint8).reshape(-1))
 
@@ -335,7 +417,7 @@ def load_94_and_generate_faces(num_folders, size_image):
                     if i == 20:
                         break
 
-    return l_class_Figure, l_np_faces
+    return l_class_figure, l_np_faces
 
 
 def show_img(np_img, x=None, y=None):
@@ -410,14 +492,17 @@ def resize_img(img, size_image):
     :param size_image: new format
     :return:
     """
+    #img_255 = np.asarray(img * 255, dtype=np.uint8)
 
     new_img = Image.fromarray(img, "L")
 
     # Resize it
     crop_img = new_img.resize((size_image, size_image), Image.ANTIALIAS)
 
+    np_image = np.array(crop_img, dtype=np.uint8).reshape(-1)
+
     # Return the new np_image
-    return np.array(crop_img, dtype=np.uint8).reshape(-1)
+    return np_image
 
 
 def unpickle(directory):
@@ -430,52 +515,6 @@ def unpickle(directory):
     dict_loading = cPickle.load(fo)
     fo.close()
     return dict_loading
-
-
-def load_image(directory):
-    """
-    Function to read a unique np_image from directory
-    :param directory: Directory to np_image
-    :return: np_image in format numpy
-    """
-    img_loading = Image.open(directory).convert('L')
-    img_loading.load()
-
-    return np.asarray(img_loading, dtype=np.uint8)
-
-
-def save_image(np_img, directory, lin=None, col=None):
-    """
-    Save a np_image in a specific directory
-    :param img: the np_image
-    :param directory: the directory
-    :param lin: rows of np_image
-    :param col: columns of np_image
-    """
-
-    """
-    # Convert the img to a numpy
-    if "numpy" not in str(type(img)):
-        img_np = np.array(img)
-    else:
-        img_np = img
-    """
-
-    # Verify if it np_image is on the correct shape
-    if len(np_img.shape) == 1:
-        if lin == None:
-            print "ERROR, Defina o valor lin ou col"
-            sys.exit(88)
-
-        img_reshaped = np_img.reshape((lin, col))
-
-    else:
-        img_reshaped = np_img
-
-    # Save the np_image
-    img_out = Image.fromarray(np.asarray(img_reshaped, dtype=np.uint8), "L")
-
-    img_out.save(directory)
 
 
 def verify_args():

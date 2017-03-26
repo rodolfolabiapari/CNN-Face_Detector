@@ -38,6 +38,7 @@ from neon.callbacks.callbacks import Callbacks
 import os.path
 #
 import sys
+import time
 import cPickle
 
 # crop and resize to 32x32
@@ -48,6 +49,8 @@ from neon.data import ArrayIterator
 
 
 def main():
+
+    start_program = time.time()
 
     # Start
     print "[INFO]: Library read."
@@ -61,20 +64,38 @@ def main():
     print "[INFO]: Information about backend:"
     print "\t", backend, "\n"
 
-
     # TODO folders from terminal reading from file
     l_directories_fddb_train = [
          "./data_sets/FDDB-folds/FDDB-fold-01-ellipseList.txt",
          "./data_sets/FDDB-folds/FDDB-fold-02-ellipseList.txt",
          "./data_sets/FDDB-folds/FDDB-fold-03-ellipseList.txt",
-         "./data_sets/FDDB-folds/FDDB-fold-04-ellipseList.txt"
-        #"./data_sets/FDDB-folds/FDDB-fold-01-ellipseList-1.txt"
+         "./data_sets/FDDB-folds/FDDB-fold-04-ellipseList.txt",
+         "./data_sets/FDDB-folds/FDDB-fold-05-ellipseList.txt"
     ]
+
+    # TODO read files
+    diretorios_test = ["./data_sets/FDDB-folds/FDDB-fold-06.txt"
+                       ]
+
+    # Load the images creating the training set
+    if CONST_train_again == "y":
+        train_set = cnn_functs.loading_set_for_training(num_files_94, l_directories_fddb_train, CONST_size_image_algorithm)
+
+    test_set, figure_test_set = cnn_functs.loading_set_for_testing(diretorios_test, CONST_batch_size, CONST_size_image_algorithm)
 
     # Verify if there is necessity of re-train
     if CONST_train_again == "y":
 
-        model = cnn_functs.train_model_fddb_94(num_files_94, l_directories_fddb_train, CONST_size_image_algorithm, CONST_num_epochs, CONST_learning_rate, CONST_momentum)
+        model = cnn_functs.train_model_fddb_94(train_set, test_set, CONST_num_epochs, CONST_learning_rate, CONST_momentum)
+
+        # Saving
+
+        print "[BACK]: Saving the model with the name \"cnn-trained_model.prm\".\n\n"
+        model.save_params(
+            "./cnn/cnn-trained_model-" + str(num_files_94) + "-" + str(len(l_directories_fddb_train)) + "-" +
+            str(CONST_size_image_algorithm) + "-" +
+            str(CONST_num_epochs) + ".prm")
+
     else:
         print "[INFO]: Network already created."
         print "[LOAD]: Loading the model with the name \"cnn-trained_model.prm\".\n\n"
@@ -89,14 +110,16 @@ def main():
 
     # Test Section
 
-    # TODO read files
-    diretorios_test = ["./data_sets/FDDB-folds/FDDB-fold-05 copy.txt"
-                       ]
 
-    l_out, test_Figures = cnn_functs.do_tests(diretorios_test, CONST_batch_size, CONST_size_image_algorithm, model)
+    l_out = cnn_functs.do_tests(test_set, model)
 
     # Analyze the results
-    cnn_functs.analyze_results(l_out, test_Figures)
+    cnn_functs.analyze_results(l_out, figure_test_set)
 
+
+    end_program = time.time()
+    print "\tTime spend to organize: ", (end_program - start_program) / 60, 'minutes, or ', ((end_program - start_program) / 60) / 60, " hours\n"
+
+    print "\tEND OF EXECUTION\n"
 
 main()

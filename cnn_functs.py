@@ -26,12 +26,12 @@ import numpy as np
 import sys
 import math
 from neon.data import ArrayIterator
-from neon.layers import Conv, Affine, Pooling, GeneralizedCost
+from neon.layers import Conv, Convolution, Dropout, Affine, Activation, Pooling, GeneralizedCost
 from neon.initializers import Uniform, Gaussian
 from neon.transforms.activation import Rectlin, Softmax
 from neon.transforms import CrossEntropyMulti, CrossEntropyBinary, Misclassification
 from neon.models import Model
-from neon.optimizers import GradientDescentMomentum, RMSProp
+from neon.optimizers import GradientDescentMomentum, RMSProp, Schedule
 from neon.callbacks.callbacks import Callbacks
 # Search files on path
 import os.path
@@ -46,11 +46,8 @@ from random import randrange
 from neon.data import ArrayIterator
 
 
-def train_model_fddb_94(num_files_94, l_directories_fddb_train,  const_size_image, num_epochs, learning_rate, momentum):
+def train_model_fddb_94(train_set, test_set, num_epochs, learning_rate, momentum):
     print "[DOWN]: Getting the dataset of training."
-
-    # Load the images creating the training set
-    train_set = loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_image)
 
     print "[INFO]: The Neural Network was not created yet."
     print "[INFO]: Starting procedure of creating and training."
@@ -59,7 +56,7 @@ def train_model_fddb_94(num_files_94, l_directories_fddb_train,  const_size_imag
     #     Setting up the cost function of network output
 
     print "[INFO]: Creating the cost function."
-    cost = GeneralizedCost(costfunc=CrossEntropyBinary())
+    cost = GeneralizedCost(costfunc=CrossEntropyMulti())
 
     # Procedure for Build Model
 
@@ -67,29 +64,34 @@ def train_model_fddb_94(num_files_94, l_directories_fddb_train,  const_size_imag
 
     # Network with two Conv, two Pooling, and two Affine layers.
 
-    print "\tCreating a Convolutional Network.\n"
+    print "\tCreating a Convolutional Network"
     init_uni = Uniform(low=-0.1, high=0.1)
 
-    layers = [Conv(fshape=(5, 5, 4),
-                   init=init_uni,
-                   activation=Rectlin(), padding=True),
+    print "\t\tConv(   fshape=(5, 5, 4)"
+    print "\t\tPooling(fshape=(2, 2)"
+    print "\t\tConv(   fshape=(3, 3, 14)"
+    print "\t\tPooling(fshape=(2, 2)"
+    print "\t\tAffine( nout=14"
+    print "\t\tAffine( nout=2\n"
 
-              Pooling(fshape=2, strides=2),
+    # Construct the first convolutional pooling layer:
+    # filtering reduces the image size to (34-5+1 , 34-5+1) = (30, 30)
+    # maxpooling reduces this further to (30/2, 30/2) = (15, 15)
+    # 4D output tensor is thus of shape (batch_size, nkerns[0], 15, 15)
 
-              Conv(fshape=(3, 3, 14),
-                   init=init_uni,
-                   activation=Rectlin(), padding=True),
+    layers = [# Conv(fshape=(5, 5, 4), init=init_uni, activation=Rectlin()),
+              Convolution(fshape=(5, 5, 4), init=init_uni),
 
-              Pooling(fshape=2, strides=2),
+              Pooling(fshape=(2, 2)),
 
-              Affine(nout=14,
-                     init=init_uni,
-                     bias=init_uni,
-                     activation=Rectlin()),
+              # Conv(fshape=(3, 3, 14), init=init_uni, activation=Rectlin()),
+              Convolution(fshape=(3, 3, 14), init=init_uni),
 
-              Affine(nout=2,
-                     init=init_uni,
-                     activation=Softmax())]
+              Pooling(fshape=(2, 2)),
+
+              Affine(nout=14, init=init_uni, activation=Rectlin(), batch_norm=True),
+
+              Affine(nout=2, init=init_uni, activation=Softmax())]
 
     # Optimizer
 
@@ -107,7 +109,7 @@ def train_model_fddb_94(num_files_94, l_directories_fddb_train,  const_size_imag
     # Callback
 
     print "[INFO]: Creating the Callbacks."
-    callbacks = Callbacks(model, train_set)
+    callbacks = Callbacks(model, test_set)
 
     # Training
 
@@ -120,15 +122,9 @@ def train_model_fddb_94(num_files_94, l_directories_fddb_train,  const_size_imag
     print "\tTime spend to organize: ", end - start, 'seconds'
     print "\tTime spend to organize: ", (end - start) / 60.0, 'minutes\n'
 
-    # Saving
-
-    print "[BACK]: Saving the model with the name \"cnn-trained_model.prm\".\n\n"
-    model.save_params("./cnn/cnn-trained_model-"+ str(num_files_94) + "-" + str(len(l_directories_fddb_train)) + "-" +
-                      str(const_size_image) + "-" +
-                      str(num_epochs) + ".prm")
-
     return model
 
+"""
 
 def train_model(directories_train, const_size_image, num_epochs, learning_rate, momentum):
     print "[DOWN]: Downloading the dataset of training."
@@ -213,27 +209,19 @@ def train_model(directories_train, const_size_image, num_epochs, learning_rate, 
 
     return model
 
+"""
 
-def do_tests(directories_test, batch_min_size, const_size_image, model):
+def do_tests(test_set, model):
 
     print "----------------------------------------------" \
           "\n[INFO]: Starting the procedure of tests."
-
-    # Create a list of figures from test dataset
-    test_figures = loading_set_for_testing(directories_test)
-
-    # Create a list of batches for test
-    l_batches_test = making_regions(test_figures, batch_min_size, const_size_image)
-
-    # Generate the inference lists for tests
-    test_set = generate_inference(l_batches_test, batch_min_size, const_size_image)
 
     # Calcule the Miss classification error by framework
     miss_test = False or True  # todo retirar essa variavel e colocar no argumentos
     if miss_test:
         print "[INFO]: Checking the Miss classification of error."
         start = time.time()
-        error_pct = 100 * model.eval(test_set[0], metric=Misclassification())
+        error_pct = 100 * model.eval(test_set[2], metric=Misclassification())
         end = time.time()
         print "\tTime spend to organize:   ", end - start, 'seconds'
         print "\tMiss classification error: %.3f%%" % error_pct, "\n"
@@ -241,7 +229,7 @@ def do_tests(directories_test, batch_min_size, const_size_image, model):
     # Test each one batch from list of batches
     l_out = test_inference(test_set, model)
 
-    return l_out, test_figures
+    return l_out
 
 
 def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_image):
@@ -251,6 +239,9 @@ def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_
     :param const_size_image: Size of images to train
     :return: A lot of things
     """
+
+    l_np_faces_fddb = []
+    l_np_faces_94 = []
 
     # Calcule the time
     start = time.time()
@@ -275,10 +266,17 @@ def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_
     print "[INFO]: Loading training FDDB data-set"
     l_class_figure_fddb = basic_functs.load_fddb(l_directories_fddb_train, const_size_image)
 
-    l_np_faces_fddb = basic_functs.generate_faces_fddb(l_class_figure_fddb, const_size_image)
+    # do not uncomment
+    # l_np_faces_fddb = basic_functs.generate_faces_fddb(l_class_figure_fddb, const_size_image)
 
     l_np_non_faces_fddb = basic_functs.generate_non_faces_fddb(l_class_figure_fddb, const_size_image)
-    l_np_faces = np.concatenate((l_np_faces_fddb, l_np_faces_94))
+
+    if len(l_np_faces_fddb) == 0:
+        l_np_faces = l_np_faces_94
+    elif len(l_np_faces_94) == 0:
+        l_np_faces = l_np_faces_fddb
+    else:
+        l_np_faces = np.concatenate((l_np_faces_fddb, l_np_faces_94))
 
     print "\tNumber of Faces:     ", len(l_np_faces_fddb)
 
@@ -291,6 +289,9 @@ def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_
     print "\tNumber of Non-Faces: ", len(l_np_non_faces)
 
     arrayIterator_train_set = basic_functs.making_arrayIterator(l_np_faces, l_np_non_faces, const_size_image)
+
+    end = time.time()
+    print "\tTime spend to organize: ", end - start, 'seconds'
 
     return arrayIterator_train_set
 
@@ -482,7 +483,20 @@ def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_
     """
 
 
-def loading_set_for_testing(directories):
+def loading_set_for_testing(directories_test, batch_min_size, const_size_image):
+    # Create a list of figures from test dataset
+    test_figures = loading_testing_data_set(directories_test)
+
+    # Create a list of batches for test
+    l_batches_test = making_regions(test_figures, batch_min_size, const_size_image)
+
+    # Generate the inference lists for tests
+    test_set = generate_inference(l_batches_test, batch_min_size, const_size_image)
+
+    return test_set, test_figures
+
+
+def loading_testing_data_set(directories):
     """
     Procedure that loads the dataset for testing
     :param directories: List of directors
@@ -536,13 +550,15 @@ def making_regions(l_class_figure, batch_min_size, const_size_image):
     start = time.time()
     l_batch_np_images = []
 
+    factor = 4
+
     # For each Image
     for Figure_original in l_class_figure:
 
         # Bound of each figure to test
         bound = const_size_image
         # Distance's interval of the face
-        interval = bound - bound / 4
+        interval = bound / factor
         l_new_images = []
 
         # Quantity of new images created
@@ -565,6 +581,9 @@ def making_regions(l_class_figure, batch_min_size, const_size_image):
                     crop_np_img = Figure_original.get_image()[edge_y_axis - bound: edge_y_axis
                                ][:, edge_x_axis - bound: edge_x_axis]
 
+                    # basic_functs.save_image(mark_result(Figure_original.get_image(), [edge_x_axis, edge_y_axis, bound]), "./regions/" + str(time.time()) + ".jpg")
+
+
                     # Verify if the np_image is little than the bound of algorithm
                     if bound > const_size_image:
                         l_new_images.append(basic_functs.resize_img(
@@ -580,7 +599,7 @@ def making_regions(l_class_figure, batch_min_size, const_size_image):
 
             # if the batch of this np_image list complete, stop to create new regions
             bound += 60
-            interval = bound - bound / 4
+            interval = bound / factor
 
         while len(l_new_images) < batch_min_size:
             np_img = Figure_original.get_image()
@@ -598,7 +617,7 @@ def making_regions(l_class_figure, batch_min_size, const_size_image):
 
         l_batch_np_images.append(l_new_images)
 
-    print "\tNumbers of Batches for cropped images:       ", len(l_batch_np_images)
+    print "\tNumbers of Batches for cropped images:          ", len(l_batch_np_images)
     print "\t\tNumbers of cropped images of each np_image: ", len(l_batch_np_images[0])
 
     end = time.time()
@@ -760,8 +779,9 @@ def analyze_results(l_out, l_Figura_class):
             #sys.stdout.flush()
             # se for encontrado algum rosto
 
+
             if region[0] > 0.5:
-                print "Face Detectada: ", region
+                # print "Face Detectada: ", region
                 image_marked = True
 
                 np_img = l_Figura_class[index].get_image()
@@ -770,11 +790,14 @@ def analyze_results(l_out, l_Figura_class):
                                l_Figura_class[index].l_faces_positions[num_region])
 
                 l_Figura_class[index].set_image(np_img_cut)
+            # else:
+                # print region
 
             if image_marked:
                 basic_functs.save_image(l_Figura_class[index].get_image(),
                                         "./out/f/f" + str(index) + "-" +
                                         str(num_region) + ".jpg")
+                image_marked = False
 
             num_region += 1
 
@@ -783,6 +806,7 @@ def analyze_results(l_out, l_Figura_class):
 
 
         index += 1
+        # print "\n"
 
     end = time.time()
     print "\n\tTime spend to generate the outputs: ", end - start, 'seconds', "\n"
