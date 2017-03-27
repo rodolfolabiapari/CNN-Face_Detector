@@ -18,6 +18,7 @@ import os.path
 import sys
 import os
 import shutil
+import matplotlib.pyplot as plt
 
 from neon.data import CIFAR10, ArrayIterator
 from random import randrange
@@ -522,58 +523,234 @@ def verify_args():
     Procedure to verify the arguments from terminal
     :return:
     """
-    # TODO asfk
-    # if len(sys.argv) == 2:
-    if True:
-        # do_again = int(sys.argv[1])
-        train_again = 1
-        if train_again != 0 and train_again != 1:
-            print "[ERRO]: Invalid Parameters."
-            print "[INFO]: Use name_of_program.py option_training."
-            print "[INFO]: option_training: 1 - create a new " \
-                  "Neural Network; 0 - Use already saved."
-            sys.exit()
-    else:
+    if not len(sys.argv) == 11:
         print "[ERRO]: Invalid Parameters."
-        print "[INFO]: Use name_of_program.py option_training."
-        print "[INFO]: option_training: 1 - create a new Neural " \
-              "Network; 0 - Use already saved."
-        sys.exit()
+        print "\n[INFO]: Use: \nname_of_program.py batch_size num_epochs size_image_algorithm learning_rate momentum " \
+              "train_again num_files_94 directories_fddb_train directories_fddb_test directories_fddb_valid"
 
-    return train_again
+        print "\n[DEFI]: batch_size: +integer."
+        print "\n[DEFI]: num_epochs: +integer."
+        print "\n[DEFI]: size_image_algorithm: +integer."
+        print "\n[DEFI]: learning_rate: +float."
+        print "\n[DEFI]: momentum: +float."
+        print "\n[DEFI]: train_again: [y|n]."
+        print "\n[DEFI]: num_files_94: 0 to all directories; integer for specific number."
+        print "\n[DEFI]: directories_fddb_train: path."
+        print "\n[DEFI]: directories_fddb_test: path."
+        print "\n[DEFI]: directories_fddb_valid: path.\n\n"
+        sys.exit()
 
 
 def verify_acerts(l_faces_positions_original, region, found_face):
-    x = int(region[0])
-    y = int(region[1])
+    x_region_actual = int(region[0])
+    y_region_actual = int(region[1])
 
-    inside_x = False
-    inside_y = False
+    is_x_inside_face = False
+    is_y_inside_face = False
 
-    i = 0
+    index = 0
+
+    min_x_face_original = 0
+    min_y_face_original = 0
+
     for original_faces in l_faces_positions_original:
-        point_x = float(original_faces[3])
-        point_y = float(original_faces[4])
+        center_x_face_original = float(original_faces[3])
+        center_y_face_original = float(original_faces[4])
         radius = float(original_faces[0])
-        inside_x = False
-        inside_y = False
 
-        if abs(x - point_x) < radius:
-            inside_x = True
+        # Is inside
 
-        if abs(y - point_y) < radius:
-            inside_y = True
+        if abs(x_region_actual - center_x_face_original) < radius * 1.3:
+            is_x_inside_face = True
 
-        if inside_x and inside_y:
-            break
+        if abs(y_region_actual - center_y_face_original) < radius * 1.3:
+            is_y_inside_face = True
+
+        #if is_x_inside_face and is_y_inside_face:
+        #    break
+
+        if abs(x_region_actual - center_x_face_original) < abs(x_region_actual - float(l_faces_positions_original[min_x_face_original][3])):
+            min_x_face_original = index
+
+        if abs(y_region_actual - center_y_face_original) < abs(y_region_actual - float(l_faces_positions_original[min_y_face_original][4])):
+            min_y_face_original = index
+
+        index += 1
+
+    if abs(x_region_actual - float(l_faces_positions_original[min_x_face_original][3])) < abs(
+                    y_region_actual - float(l_faces_positions_original[min_y_face_original][4])):
+
+        # difference = abs(x_region_actual - float(l_faces_positions_original[min_x_face_original][3]))
+        distance = math.sqrt((x_region_actual - float(l_faces_positions_original[min_x_face_original][3])) ** 2 + (
+            y_region_actual - float(l_faces_positions_original[min_x_face_original][4])) ** 2)
+
+    else:
+        #difference = abs(y_region_actual - float(l_faces_positions_original[min_y_face_original][4]))
+        distance = math.sqrt((x_region_actual - float(l_faces_positions_original[min_y_face_original][3])) ** 2 + (
+            y_region_actual - float(l_faces_positions_original[min_y_face_original][4])) ** 2)
+
 
     if found_face:
-        if inside_x and inside_y:      # true_positive
-            return 0
+        if is_x_inside_face and is_y_inside_face:      # true_positive
+            return 0, distance
         else:                          # false_positive
-            return 1
+            return 1, distance
     else:
-        if not (inside_x or inside_y): # true_negative
-            return 2
-        else:                          # fasle_negative
-            return 3
+        if not (is_x_inside_face and is_y_inside_face): # true_negative
+            return 2, distance
+        else:                          # false_negative
+            return 3, distance
+
+
+# TODO marcar a foto
+def mark_result(np_img, position):
+    """
+    Procedure that mark the result of process
+    :param image: np_image to mark
+    :param position: position to mark
+    :param s_path: s_path to save
+    :return: do not have return
+    """
+
+    np_img_marked = np_img
+
+    # np_img_marked = np.array(image)
+    coords = position
+
+    edge_x_axis = coords[1]
+    edge_y_axis = coords[0]
+    bound = coords[2]
+
+    np_img_marked.flags.writeable = True
+
+    # mark the y axis
+    value = 255
+    for y in range(edge_y_axis - bound, edge_y_axis):
+        np_img_marked[edge_x_axis, y] = value
+        np_img_marked[edge_x_axis - bound, y] = value
+        np_img_marked[edge_x_axis, y + 1] = value
+        np_img_marked[edge_x_axis - bound, y + 1] = value
+
+    # Mark the x axis
+    for x in range(edge_x_axis - bound, edge_x_axis):
+        np_img_marked[x, edge_y_axis] = value
+        np_img_marked[x, edge_y_axis - bound] = value
+        np_img_marked[x + 1, edge_y_axis] = value
+        np_img_marked[x + 1, edge_y_axis - bound] = value
+
+    return np_img_marked
+
+
+def make_graphic(l_batch, num_batch):
+
+    labels = ["True Positives", "False Positives", "True Negatives", "False Negatives"]
+
+    plt.figure(dpi=300)
+
+    plt.ylabel("Distance of the Central Point")
+    plt.xlabel("Type of Erros")
+    plt.title("Distance Graph " + str(num_batch))
+
+    #plt.xlim(0, 6)
+    #plt.ylim(-5, 80)
+    plt.legend(loc="upper left")
+
+    # For each batch
+    plt.boxplot(l_batch, labels=labels, notch=True)
+
+    plt.savefig("boxplot-" + str(num_batch) + ".png")
+
+
+def analyze_results(l_out, l_Figura_class, num_batch):
+    print "[INFO]: Analyzing the Results"
+
+
+    l_statistics_batch = []
+
+    l_statistics_batch.append([])
+    l_statistics_batch.append([])
+    l_statistics_batch.append([])
+    l_statistics_batch.append([])
+
+    index = 0
+    start = time.time()
+
+    if os.path.exists("./out/"):
+        shutil.rmtree("./out/")
+
+    os.mkdir("./out/")
+    os.mkdir("./out/f/")
+    os.mkdir("./out/n/")
+
+    # Para cada batch de images
+    for batch in l_out:
+
+        # para cada regiao
+        num_region = 0
+        image_marked = False
+
+        for region in batch:
+            sys.stdout.write("\r\tProcessed: " + str(num_region + 1) + ":" + str(index + 1) + " of " + str(len(l_out)) +
+                             ". \tCompleted: " + str(index + 1 / float(index + 1) * 100.0) +
+                             "%.\tTime spend until now: " + str(time.time() - start) + "s")
+            sys.stdout.flush()
+
+            if region[0] > 0.5:
+                image_marked = True
+
+                np_img = l_Figura_class[index].get_image()
+
+                np_img_cut = mark_result(np_img, l_Figura_class[index].l_faces_positions_regions[num_region])
+
+                l_Figura_class[index].set_image(np_img_cut)
+                error_type, distance = basic_functs.verify_acerts(l_Figura_class[index].l_faces_positions_original,
+                                                        l_Figura_class[index].l_faces_positions_regions[num_region], 1)
+            else:
+                error_type, distance = basic_functs.verify_acerts(l_Figura_class[index].l_faces_positions_original,
+                                                        l_Figura_class[index].l_faces_positions_regions[num_region], 0)
+
+            if error_type == 0:
+                l_statistics_batch[0].append(distance)
+            elif error_type == 1:
+                l_statistics_batch[1].append(distance)
+            elif error_type == 2:
+                l_statistics_batch[2].append(distance)
+            elif error_type == 3:
+                l_statistics_batch[3].append(distance)
+
+            if image_marked:
+                basic_functs.save_image(l_Figura_class[index].get_image(),
+                                        "./out/f/f" + str(index) + "-" + str(num_region) + ".jpg")
+                image_marked = False
+
+            num_region += 1
+
+            if num_region >= len(l_Figura_class[index].l_faces_positions_regions):
+                break
+
+        index += 1
+
+    make_graphic(l_statistics_batch, num_batch)
+
+    print "\n\tTrue Positives: ", len(l_statistics_batch[0]), "\tFalse Positives: ", len(l_statistics_batch[1]), "\n\tTrue Negatives: ", len(l_statistics_batch[2]), "\tFalse Negatives: ", len(l_statistics_batch[3])
+
+    basic_functs.save_results(l_out)
+
+    end = time.time()
+
+
+    print "\n\tTime spend to generate the outputs: ", end - start, 'seconds', "\n"
+
+
+def read_paths(path):
+
+    paths = []
+
+    # Open the file of directories
+    file = open(path, "r")
+
+    for line in file:
+        # Create a list of diretories
+        paths.append(line)
+
+    return paths
