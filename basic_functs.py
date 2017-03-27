@@ -192,7 +192,7 @@ def load_fddb(directories, size_image):
                     features_one_figure[:len(features_one_figure) - 2]
 
                 # Add the new face in object
-                l_class_Figure[-1].add_face_position(
+                l_class_Figure[-1].add_face_position_original(
                     features_one_figure_cut)
 
             s_line = file_features.readline()
@@ -291,14 +291,14 @@ def generate_non_faces_fddb(l_class_Figure, size_image):
     # For each np_image
     for i in range(0, len(l_class_Figure)):
 
-        # Printe some informations
+        # Print some informations
         sys.stdout.write("\r\tProcessed: " + str(i + 1) + " of " +
                          str(len(l_class_Figure)) +
                          ". \tCompleted: " +
                          str((i + 1) / float(len(l_class_Figure)) * 100.0) + "%")
         sys.stdout.flush()
 
-        features = l_class_Figure[i].get_face_positions()
+        features = l_class_Figure[i].get_face_positions_original()
 
         int_features = []
 
@@ -311,7 +311,7 @@ def generate_non_faces_fddb(l_class_Figure, size_image):
         if np_img.shape[1] - int_features[0][0] > int_features[0][0] + 90 and np_img.shape[0] - int_features[0][0] > int_features[0][0] + 90 and len(int_features) < 3:
 
             # for each face in the np_image
-            for generations in range(0, 16):
+            for generations in range(0, 20):
 
                 flag_igual_face_x = True
                 flag_igual_face_y = True
@@ -541,3 +541,39 @@ def verify_args():
         sys.exit()
 
     return train_again
+
+
+def verify_acerts(l_faces_positions_original, region, found_face):
+    x = int(region[0])
+    y = int(region[1])
+
+    inside_x = False
+    inside_y = False
+
+    i = 0
+    for original_faces in l_faces_positions_original:
+        point_x = float(original_faces[3])
+        point_y = float(original_faces[4])
+        radius = float(original_faces[0])
+        inside_x = False
+        inside_y = False
+
+        if abs(x - point_x) < radius:
+            inside_x = True
+
+        if abs(y - point_y) < radius:
+            inside_y = True
+
+        if inside_x and inside_y:
+            break
+
+    if found_face:
+        if inside_x and inside_y:      # true_positive
+            return 0
+        else:                          # false_positive
+            return 1
+    else:
+        if not (inside_x or inside_y): # true_negative
+            return 2
+        else:                          # fasle_negative
+            return 3

@@ -1,4 +1,3 @@
-
 from settings import *
 
 import time
@@ -10,9 +9,9 @@ import sys
 from neon.transforms import Misclassification
 from neon.models import Model
 
-import urllib                    # download the np_image
-from PIL import Image            # crop and resize to 32x32
-import numpy as np               # Work with vectors and matrices
+import urllib  # download the np_image
+from PIL import Image  # crop and resize to 32x32
+import numpy as np  # Work with vectors and matrices
 import basic_functs
 # Search files on path
 import os.path
@@ -79,19 +78,19 @@ def train_model_fddb_94(train_set, test_set, num_epochs, learning_rate, momentum
     # maxpooling reduces this further to (30/2, 30/2) = (15, 15)
     # 4D output tensor is thus of shape (batch_size, nkerns[0], 15, 15)
 
-    layers = [# Conv(fshape=(5, 5, 4), init=init_uni, activation=Rectlin()),
-              Convolution(fshape=(5, 5, 4), init=init_uni),
+    layers = [  # Conv(fshape=(5, 5, 4), init=init_uni, activation=Rectlin()),
+        Convolution(fshape=(5, 5, 4), init=init_uni),
 
-              Pooling(fshape=(2, 2)),
+        Pooling(fshape=(2, 2)),
 
-              # Conv(fshape=(3, 3, 14), init=init_uni, activation=Rectlin()),
-              Convolution(fshape=(3, 3, 14), init=init_uni),
+        # Conv(fshape=(3, 3, 14), init=init_uni, activation=Rectlin()),
+        Convolution(fshape=(3, 3, 14), init=init_uni),
 
-              Pooling(fshape=(2, 2)),
+        Pooling(fshape=(2, 2)),
 
-              Affine(nout=14, init=init_uni, activation=Rectlin(), batch_norm=True),
+        Affine(nout=14, init=init_uni, activation=Rectlin(), batch_norm=True),
 
-              Affine(nout=2, init=init_uni, activation=Softmax())]
+        Affine(nout=2, init=init_uni, activation=Softmax())]
 
     # Optimizer
 
@@ -123,6 +122,7 @@ def train_model_fddb_94(train_set, test_set, num_epochs, learning_rate, momentum
     print "\tTime spend to organize: ", (end - start) / 60.0, 'minutes\n'
 
     return model
+
 
 """
 
@@ -211,23 +211,23 @@ def train_model(directories_train, const_size_image, num_epochs, learning_rate, 
 
 """
 
-def do_tests(test_set, model):
 
+def do_validation(valid_set, model):
     print "----------------------------------------------" \
           "\n[INFO]: Starting the procedure of tests."
 
     # Calcule the Miss classification error by framework
-    miss_test = False or True  # todo retirar essa variavel e colocar no argumentos
+    miss_test = False  # or True  # todo retirar essa variavel e colocar no argumentos
     if miss_test:
         print "[INFO]: Checking the Miss classification of error."
         start = time.time()
-        error_pct = 100 * model.eval(test_set[2], metric=Misclassification())
+        error_pct = 100 * model.eval(valid_set[2], metric=Misclassification())
         end = time.time()
         print "\tTime spend to organize:   ", end - start, 'seconds'
         print "\tMiss classification error: %.3f%%" % error_pct, "\n"
 
     # Test each one batch from list of batches
-    l_out = test_inference(test_set, model)
+    l_out = test_inference(valid_set, model)
 
     return l_out
 
@@ -483,6 +483,45 @@ def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_
     """
 
 
+def loading_set_for_validation(l_directories_fddb_valid, batch_min_size, const_size_image):
+    """
+    Procedure to read dataset for training.
+    :param directorys: directorys for read the images. It can backend more than one.
+    :param const_size_image: Size of images to train
+    :return: A lot of things
+    """
+
+    l_np_valid = []
+
+    # Calcule the time
+    start = time.time()
+
+    """
+
+    # Verify if exist a s_path to save images, if needed
+    if os.path.exists("./train/"):
+        shutil.rmtree("./train/")
+
+    # Make the directorys
+    os.mkdir("./train/")
+    os.mkdir("./train/face/")
+    os.mkdir("./train/non_face/")
+    """
+
+    # FDDB
+
+    print "[INFO]: Loading FDDB data-set"
+    valid_figures = basic_functs.load_fddb(l_directories_fddb_valid, const_size_image)
+
+    # Create a list of batches for test
+    l_batches_test = making_regions(valid_figures, batch_min_size, const_size_image)
+
+    # Generate the inference lists for tests
+    valid_set = generate_inference(l_batches_test, batch_min_size, const_size_image)
+
+    return valid_set, valid_figures
+
+
 def loading_set_for_testing(directories_test, batch_min_size, const_size_image):
     # Create a list of figures from test dataset
     test_figures = loading_testing_data_set(directories_test)
@@ -525,7 +564,8 @@ def loading_testing_data_set(directories):
             l_class_Figure[-1].set_path(s_line[:len(s_line) - 1] + ".jpg")
 
             # Save the np_image
-            l_class_Figure[-1].set_image(basic_functs.load_image("./data_sets/originalPics/" + l_class_Figure[-1].get_path()))
+            l_class_Figure[-1].set_image(
+                basic_functs.load_image("./data_sets/originalPics/" + l_class_Figure[-1].get_path()))
 
             s_line = f_paths.readline()
 
@@ -551,9 +591,15 @@ def making_regions(l_class_figure, batch_min_size, const_size_image):
     l_batch_np_images = []
 
     factor = 4
+    i = 0
 
     # For each Image
     for Figure_original in l_class_figure:
+        sys.stdout.write("\r\tProcessed: " + str(i + 1) + " of " +
+                         str(len(l_class_figure)) +
+                         ". \tCompleted: " +
+                         str((i + 1) / float(len(l_class_figure)) * 100.0) + "%")
+        sys.stdout.flush()
 
         # Bound of each figure to test
         bound = const_size_image
@@ -564,7 +610,7 @@ def making_regions(l_class_figure, batch_min_size, const_size_image):
         # Quantity of new images created
         int_count_new_images = 0
 
-        #if "ig/img_648" in Figura_original.get_path():
+        # if "ig/img_648" in Figura_original.get_path():
         #    print Figura_original.get_image().shape
 
         # Verify if the region respect the bound of the face
@@ -579,10 +625,9 @@ def making_regions(l_class_figure, batch_min_size, const_size_image):
 
                     # Crop the new np_image
                     crop_np_img = Figure_original.get_image()[edge_y_axis - bound: edge_y_axis
-                               ][:, edge_x_axis - bound: edge_x_axis]
+                                  ][:, edge_x_axis - bound: edge_x_axis]
 
                     # basic_functs.save_image(mark_result(Figure_original.get_image(), [edge_x_axis, edge_y_axis, bound]), "./regions/" + str(time.time()) + ".jpg")
-
 
                     # Verify if the np_image is little than the bound of algorithm
                     if bound > const_size_image:
@@ -592,10 +637,9 @@ def making_regions(l_class_figure, batch_min_size, const_size_image):
                         l_new_images.append(np.array(crop_np_img).reshape(-1))
 
                     # Add on the information of the region Figure list
-                    Figure_original.l_faces_positions.append([edge_x_axis, edge_y_axis, bound])
+                    Figure_original.l_faces_positions_regions.append([edge_x_axis, edge_y_axis, bound])
 
                     int_count_new_images += 1
-
 
             # if the batch of this np_image list complete, stop to create new regions
             bound += 60
@@ -614,6 +658,9 @@ def making_regions(l_class_figure, batch_min_size, const_size_image):
 
             # Save the new non_face np_image
             l_new_images.append(np.array(np_img_cut).reshape(-1))
+
+            # Add on the information of the region Figure list
+            Figure_original.l_faces_positions_regions.append([shift_x, shift_y, bound])
 
         l_batch_np_images.append(l_new_images)
 
@@ -646,17 +693,16 @@ def generate_inference(batches, batch_size, const_size_image):
     for batch in batches:
         sys.stdout.write("\r\tProcessed: " + str(count) + " of " + str(len(batches)) +
                          ". \tCompleted: " +
-                         str((count) / float(len(batches)) * 100.0 ) +
+                         str((count) / float(len(batches)) * 100.0) +
                          "%.\tTime spend until now: " +
                          str(time.time() - start) + "s")
         sys.stdout.flush()
 
         # Create a new list empty
-        #x_new = np.zeros((batch_size, const_size_image *
+        # x_new = np.zeros((batch_size, const_size_image *
         #                  const_size_image * 3), dtype=np.uint8)
 
         x_new = np.zeros((len(batch), const_size_image * const_size_image), dtype=np.uint8)
-
 
         # Add the batch to the list
         x_new[0:len(batch)] = np.asarray(batch, dtype=np.uint8)
@@ -724,7 +770,7 @@ def mark_result(np_img, position):
 
     np_img_marked = np_img
 
-    #np_img_marked = np.array(image)
+    # np_img_marked = np.array(image)
     coords = position
 
     edge_x_axis = coords[1]
@@ -738,21 +784,27 @@ def mark_result(np_img, position):
     for y in range(edge_y_axis - bound, edge_y_axis):
         np_img_marked[edge_x_axis, y] = value
         np_img_marked[edge_x_axis - bound, y] = value
-        np_img_marked[edge_x_axis, y+1] = value
-        np_img_marked[edge_x_axis - bound, y+1] = value
+        np_img_marked[edge_x_axis, y + 1] = value
+        np_img_marked[edge_x_axis - bound, y + 1] = value
 
     # Mark the x axis
     for x in range(edge_x_axis - bound, edge_x_axis):
         np_img_marked[x, edge_y_axis] = value
         np_img_marked[x, edge_y_axis - bound] = value
-        np_img_marked[x+1, edge_y_axis] = value
-        np_img_marked[x+1, edge_y_axis - bound] = value
+        np_img_marked[x + 1, edge_y_axis] = value
+        np_img_marked[x + 1, edge_y_axis - bound] = value
 
     return np_img_marked
 
 
 def analyze_results(l_out, l_Figura_class):
     print "[INFO]: Analyzing the Results"
+
+    true_positive = 0
+    false_positive = 0
+
+    true_negative = 0
+    false_negative = 0
 
     index = 0
     start = time.time()
@@ -773,43 +825,51 @@ def analyze_results(l_out, l_Figura_class):
         num_region = 0
         image_marked = False
         for region in batch:
-            #sys.stdout.write("\r\tProcessed: " + str(index + 1) + ":" + str(num_region+1) + " of " + str(len(l_out)) +
-            #                 ". \tCompleted: " + str(index + 1 / float(len(l_out)) * 100.0) +
-            #                 "%.\tTime spend until now: " + str(time.time() - start) + "s")
-            #sys.stdout.flush()
-            # se for encontrado algum rosto
-
+            sys.stdout.write("\r\tProcessed: " + str(num_region + 1) + ":" + str(index + 1) + " of " + str(len(l_out)) +
+                             ". \tCompleted: " + str(index + 1 / float(len(l_out)) * 100.0) +
+                             "%.\tTime spend until now: " + str(time.time() - start) + "s")
+            sys.stdout.flush()
 
             if region[0] > 0.5:
-                # print "Face Detectada: ", region
                 image_marked = True
 
                 np_img = l_Figura_class[index].get_image()
 
-                np_img_cut = mark_result(np_img,
-                               l_Figura_class[index].l_faces_positions[num_region])
+                np_img_cut = mark_result(np_img, l_Figura_class[index].l_faces_positions_regions[num_region])
 
                 l_Figura_class[index].set_image(np_img_cut)
-            # else:
-                # print region
+                error_type = basic_functs.verify_acerts(l_Figura_class[index].l_faces_positions_original,
+                                                        l_Figura_class[index].l_faces_positions_regions[num_region], 1)
+            else:
+                error_type = basic_functs.verify_acerts(l_Figura_class[index].l_faces_positions_original,
+                                                        l_Figura_class[index].l_faces_positions_regions[num_region], 0)
+
+            if error_type == 0:
+                true_positive += 1
+            elif error_type == 1:
+                false_positive += 1
+            elif error_type == 2:
+                true_negative += 1
+            elif error_type == 3:
+                false_negative += 1
 
             if image_marked:
                 basic_functs.save_image(l_Figura_class[index].get_image(),
-                                        "./out/f/f" + str(index) + "-" +
-                                        str(num_region) + ".jpg")
+                                        "./out/f/f" + str(index) + "-" + str(num_region) + ".jpg")
                 image_marked = False
 
             num_region += 1
 
-            if num_region >= len(l_Figura_class[index].l_faces_positions):
+            if num_region >= len(l_Figura_class[index].l_faces_positions_regions):
                 break
 
-
         index += 1
-        # print "\n"
+
+    print "True Positives: ", true_positive, "\tFalse Positives: ", false_positive, "\nTrue Negatives: ", true_negative, "\tFalse Negatives: ", false_negative
 
     end = time.time()
     print "\n\tTime spend to generate the outputs: ", end - start, 'seconds', "\n"
+
 
 """
 #classes = ["airplane", "automobile", "bird", "cat", "deer", "dog", "frog",

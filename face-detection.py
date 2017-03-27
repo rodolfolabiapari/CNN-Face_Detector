@@ -51,6 +51,7 @@ from neon.data import ArrayIterator
 def main():
 
     start_program = time.time()
+    train_set = []
 
     # Start
     print "[INFO]: Library read."
@@ -74,8 +75,7 @@ def main():
     ]
 
     # TODO read files
-    diretorios_test = ["./data_sets/FDDB-folds/FDDB-fold-06.txt"
-                       ]
+    diretorios_test = ["./data_sets/FDDB-folds/FDDB-fold-06.txt"]
 
     # Load the images creating the training set
     if CONST_train_again == "y":
@@ -108,13 +108,23 @@ def main():
             print "[ERRO]: Please create a new model."
             sys.exit(-1)
 
+    # TODO folders from terminal reading from file
+    l_directories_fddb_valid = [
+        #"./data_sets/FDDB-folds/FDDB-fold-01-ellipseList.txt",
+        #"./data_sets/FDDB-folds/FDDB-fold-02-ellipseList.txt",
+        #"./data_sets/FDDB-folds/FDDB-fold-03-ellipseList.txt",
+        #"./data_sets/FDDB-folds/FDDB-fold-07-ellipseList.txt",
+        "./data_sets/FDDB-folds/FDDB-fold-06-ellipseList.txt"
+    ]
+
+    # TODO fazer um for each no l_directories_fddb_valid
+    valid_set, figure_valid_set = cnn_functs.loading_set_for_validation(l_directories_fddb_valid, CONST_batch_size, CONST_size_image_algorithm)
+
     # Test Section
-
-
-    l_out = cnn_functs.do_tests(test_set, model)
+    l_out = cnn_functs.do_validation(valid_set, model)
 
     # Analyze the results
-    cnn_functs.analyze_results(l_out, figure_test_set)
+    cnn_functs.analyze_results(l_out, figure_valid_set)
 
 
     end_program = time.time()
