@@ -483,7 +483,7 @@ def loading_set_for_training(num_files_94, l_directories_fddb_train, const_size_
     """
 
 
-def loading_set_for_validation(l_directories_fddb_valid, batch_min_size, const_size_image):
+def loading_set_for_validation(list_images, batch_min_size, const_size_image):
     """
     Procedure to read dataset for training.
     :param directorys: directorys for read the images. It can backend more than one.
@@ -511,7 +511,7 @@ def loading_set_for_validation(l_directories_fddb_valid, batch_min_size, const_s
     # FDDB
 
     print "[INFO]: Loading FDDB data-set"
-    valid_figures = basic_functs.load_fddb(l_directories_fddb_valid, const_size_image)
+    valid_figures = basic_functs.load_fddb([list_images], const_size_image)
 
     # Create a list of batches for test
     l_batches_test = making_regions(valid_figures, batch_min_size, const_size_image)
@@ -757,129 +757,3 @@ def test_inference(l_inferences, model):
 
     return l_out
 
-
-# TODO marcar a foto
-def mark_result(np_img, position):
-    """
-    Procedure that mark the result of process
-    :param image: np_image to mark
-    :param position: position to mark
-    :param s_path: s_path to save
-    :return: do not have return
-    """
-
-    np_img_marked = np_img
-
-    # np_img_marked = np.array(image)
-    coords = position
-
-    edge_x_axis = coords[1]
-    edge_y_axis = coords[0]
-    bound = coords[2]
-
-    np_img_marked.flags.writeable = True
-
-    # mark the y axis
-    value = 255
-    for y in range(edge_y_axis - bound, edge_y_axis):
-        np_img_marked[edge_x_axis, y] = value
-        np_img_marked[edge_x_axis - bound, y] = value
-        np_img_marked[edge_x_axis, y + 1] = value
-        np_img_marked[edge_x_axis - bound, y + 1] = value
-
-    # Mark the x axis
-    for x in range(edge_x_axis - bound, edge_x_axis):
-        np_img_marked[x, edge_y_axis] = value
-        np_img_marked[x, edge_y_axis - bound] = value
-        np_img_marked[x + 1, edge_y_axis] = value
-        np_img_marked[x + 1, edge_y_axis - bound] = value
-
-    return np_img_marked
-
-
-def analyze_results(l_out, l_Figura_class):
-    print "[INFO]: Analyzing the Results"
-
-    true_positive = 0
-    false_positive = 0
-
-    true_negative = 0
-    false_negative = 0
-
-    index = 0
-    start = time.time()
-
-    if os.path.exists("./out/"):
-        shutil.rmtree("./out/")
-
-    os.mkdir("./out/")
-    os.mkdir("./out/f/")
-    os.mkdir("./out/n/")
-
-    basic_functs.save_results(l_out)
-
-    # Para cada batch de images 
-    for batch in l_out:
-
-        # para cada regiao
-        num_region = 0
-        image_marked = False
-        for region in batch:
-            sys.stdout.write("\r\tProcessed: " + str(num_region + 1) + ":" + str(index + 1) + " of " + str(len(l_out)) +
-                             ". \tCompleted: " + str(index + 1 / float(len(l_out)) * 100.0) +
-                             "%.\tTime spend until now: " + str(time.time() - start) + "s")
-            sys.stdout.flush()
-
-            if region[0] > 0.5:
-                image_marked = True
-
-                np_img = l_Figura_class[index].get_image()
-
-                np_img_cut = mark_result(np_img, l_Figura_class[index].l_faces_positions_regions[num_region])
-
-                l_Figura_class[index].set_image(np_img_cut)
-                error_type = basic_functs.verify_acerts(l_Figura_class[index].l_faces_positions_original,
-                                                        l_Figura_class[index].l_faces_positions_regions[num_region], 1)
-            else:
-                error_type = basic_functs.verify_acerts(l_Figura_class[index].l_faces_positions_original,
-                                                        l_Figura_class[index].l_faces_positions_regions[num_region], 0)
-
-            if error_type == 0:
-                true_positive += 1
-            elif error_type == 1:
-                false_positive += 1
-            elif error_type == 2:
-                true_negative += 1
-            elif error_type == 3:
-                false_negative += 1
-
-            if image_marked:
-                basic_functs.save_image(l_Figura_class[index].get_image(),
-                                        "./out/f/f" + str(index) + "-" + str(num_region) + ".jpg")
-                image_marked = False
-
-            num_region += 1
-
-            if num_region >= len(l_Figura_class[index].l_faces_positions_regions):
-                break
-
-        index += 1
-
-    print "True Positives: ", true_positive, "\tFalse Positives: ", false_positive, "\nTrue Negatives: ", true_negative, "\tFalse Negatives: ", false_negative
-
-    end = time.time()
-    print "\n\tTime spend to generate the outputs: ", end - start, 'seconds', "\n"
-
-
-"""
-#classes = ["airplane", "automobile", "bird", "cat", "deer", "dog", "frog",
- "horse", "ship", "truck"]
-#print classes
-#classes = ["No", "Yes"]
-
-out = model.get_outputs(inference_set)
-
-print out[0]
-#print classes[out[0].argmax()]
-
-"""

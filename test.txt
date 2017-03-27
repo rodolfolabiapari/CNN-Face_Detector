@@ -1,0 +1,4 @@
+./data_sets/FDDB-folds/FDDB-fold-05.txt
+./data_sets/FDDB-folds/FDDB-fold-06.txt
+./data_sets/FDDB-folds/FDDB-fold-07.txt
+./data_sets/FDDB-folds/FDDB-fold-08.txt
