@@ -1,0 +1,4 @@
+./data_sets/FDDB-folds/FDDB-fold-01-ellipseList.txt
+./data_sets/FDDB-folds/FDDB-fold-02-ellipseList.txt
+./data_sets/FDDB-folds/FDDB-fold-03-ellipseList.txt
+./data_sets/FDDB-folds/FDDB-fold-04-ellipseList.txt
